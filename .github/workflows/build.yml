@@ -66,3 +66,14 @@ jobs:
             ./figs/**
             ./images/**
             ./figures/**
+
+      # 8. Push compiled PDF to GitHub Pages branch
+      - name: Deploy PDF to GitHub Pages
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B gh-pages
+          cp docs/main.pdf main.pdf
+          git add main.pdf
+          git commit -m "Update compiled PDF from workflow"
+          git push -f origin gh-pages
