@@ -1,43 +1,68 @@
-name: Build LaTeX PDF
+name: Build LaTeX PDF for PRs and Branches
 
 on:
   push:
-    branches: [main]
+    branches:
+      - '**'  # run on all branches
   pull_request:
 
 jobs:
-  build:
+  build_pdf:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Checkout all files
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install TeX Live
-        uses: teatimeguest/setup-texlive-action@v2
-        with:
-          packages: scheme-full
-          update: true
-
-      - name: Compile LaTeX document
+      # 2. Install TeX Live Full
+      - name: Install TeX Live Full
         run: |
-          # Create output directory
-          mkdir -p docs
+          sudo apt-get update
+          sudo apt-get install -y texlive-full
 
-          # Step 1: First pdflatex run
-          pdflatex -interaction=nonstopmode -output-directory=docs example.tex
+      # 3. Create output folder
+      - name: Prepare docs folder
+        run: mkdir -p docs
 
-          # Step 2: Run bibtex (uses .aux from first pdflatex)
-          bibtex docs/example
+      # 4. Compile PDF using pdflatex + bibtex
+      - name: Compile LaTeX with pdflatex
+        run: |
+          pdflatex -interaction=nonstopmode -output-directory=docs main.tex
+          bibtex docs/main
+          pdflatex -interaction=nonstopmode -output-directory=docs main.tex
+          pdflatex -interaction=nonstopmode -output-directory=docs main.tex
 
-          # Step 3: Second pdflatex run to update references
-          pdflatex -interaction=nonstopmode -output-directory=docs example.tex
+      # 5. Set artifact name based on branch or PR
+      - name: Set artifact name
+        id: vars
+        run: |
+          if [ -n "$GITHUB_HEAD_REF" ]; then
+            ART_NAME="PDF-${GITHUB_HEAD_REF}"
+          else
+            ART_NAME="PDF-${GITHUB_REF_NAME}"
+          fi
+          echo "ARTIFACT_NAME=$ART_NAME" >> $GITHUB_ENV
 
-          # Step 4: Third pdflatex run to finalize cross-references
-          pdflatex -interaction=nonstopmode -output-directory=docs example.tex
-
-      - name: Upload PDF as artifact
+      # 6. Upload the compiled PDF as artifact
+      - name: Upload PDF artifact
         uses: actions/upload-artifact@v4
         with:
-          name: compiled-pdf
-          path: docs/example.pdf
+          name: ${{ env.ARTIFACT_NAME }}
+          path: docs/main.pdf
+
+      # 7. Upload all LaTeX source files as artifact
+      - name: Upload LaTeX sources
+        uses: actions/upload-artifact@v4
+        with:
+          name: Sources-${{ env.ARTIFACT_NAME }}
+          path: |
+            ./**/*.tex
+            ./**/*.cls
+            ./**/*.sty
+            ./**/*.bib
+            ./**/*.bst
+            ./img/**
+            ./figs/**
+            ./images/**
+            ./figures/**
