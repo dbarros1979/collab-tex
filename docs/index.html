@@ -3,27 +3,105 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Collab-Tex PDF Preview</title>
+    <title>Collab-Tex Online Preview</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        #controls {
+            margin-bottom: 20px;
+        }
+
+        select,
+        button {
+            padding: 5px 10px;
+            margin-right: 10px;
+        }
+
+        iframe {
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+
+        .files {
+            margin-top: 20px;
+        }
+
+        .files ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .files li {
+            margin-bottom: 5px;
+        }
+    </style>
 </head>
 
 <body>
-    <h1>Collab-Tex PDF Preview</h1>
+    <h1>📄 Collab-Tex Online Preview</h1>
+    <p>Select a branch to view its compiled PDF and source files.</p>
 
-    <p>To preview the latest PDF for a branch:</p>
-    <form id="buildForm">
-        <label for="branch">Branch name:</label>
-        <input type="text" id="branch" name="branch" value="main">
-        <button type="button" onclick="triggerBuild()">Build PDF</button>
-    </form>
+    <div id="controls">
+        <label for="branchSelect">Branch:</label>
+        <select id="branchSelect" onchange="loadBranch()">
+            <option value="main">main</option>
+            <option value="develop">develop</option>
+            <option value="feature-x">feature-x</option>
+        </select>
+        <button onclick="reloadPDF()">Reload PDF</button>
+    </div>
 
-    <h2>Latest PDF:</h2>
-    <iframe src="main.pdf" width="100%" height="800px"></iframe>
+    <h2>PDF Preview</h2>
+    <iframe id="pdfFrame" src="main/main.pdf" width="100%" height="800px"></iframe>
+
+    <div class="files">
+        <h2>Source Files</h2>
+        <p>Click to view the LaTeX source files for this branch:</p>
+        <ul id="fileList">
+            <li><a href="https://github.com/dbarros1979/collab-tex/blob/main/main.tex" target="_blank">main.tex</a></li>
+            <li><a href="https://github.com/dbarros1979/collab-tex/blob/main/references.bib" target="_blank">references.bib</a></li>
+            <li><a href="https://github.com/dbarros1979/collab-tex/tree/main/figures" target="_blank">figures/</a></li>
+        </ul>
+    </div>
 
     <script>
-        async function triggerBuild() {
-            const branch = document.getElementById('branch').value;
-            alert('Please trigger the workflow manually in GitHub Actions for branch: ' + branch);
-            // ⚠️ Cannot trigger Actions directly from Pages without authentication
+        function loadBranch() {
+            const branch = document.getElementById('branchSelect').value;
+
+            // PDF via GitHub Pages (cada branch gera sua subpasta!)
+            const pdfUrl = `https://dbarros1979.github.io/collab-tex/${branch}/main.pdf`;
+            document.getElementById('pdfFrame').src = pdfUrl;
+
+            // Atualiza links para arquivos no GitHub
+            const baseUrl = `https://github.com/dbarros1979/collab-tex/blob/${branch}/`;
+            const files = [
+                "main.tex",
+                "references.bib",
+                "figures/"
+            ];
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = "";
+            files.forEach(f => {
+                const li = document.createElement("li");
+                const a = document.createElement("a");
+                a.href = baseUrl + f;
+                a.target = "_blank";
+                a.textContent = f;
+                li.appendChild(a);
+                fileList.appendChild(li);
+            });
+        }
+
+        function reloadPDF() {
+            const iframe = document.getElementById('pdfFrame');
+            iframe.src = iframe.src.split("?")[0] + "?t=" + new Date().getTime(); // força refresh
         }
     </script>
 </body>

@@ -11,58 +11,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout all files
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Install TeX Live Full
       - name: Install TeX Live Full
         run: |
           sudo apt-get update
           sudo apt-get install -y texlive-full
 
-      # 3. Prepare docs folder (already used by GitHub Pages)
-      - name: Prepare docs folder
-        run: mkdir -p docs
-
-      # 4. Compile PDF using pdflatex + bibtex
       - name: Compile LaTeX with pdflatex
         run: |
+          mkdir -p docs
           pdflatex -interaction=nonstopmode -output-directory=docs main.tex
-          bibtex docs/main
+          bibtex docs/main || true
           pdflatex -interaction=nonstopmode -output-directory=docs main.tex
           pdflatex -interaction=nonstopmode -output-directory=docs main.tex
 
-      # 5. Set artifact name based on branch or PR
-      - name: Set artifact name
-        id: vars
+      - name: Deploy PDF to GitHub Pages (branch subfolder)
         run: |
-          if [ -n "$GITHUB_HEAD_REF" ]; then
-            ART_NAME="PDF-${GITHUB_HEAD_REF}"
-          else
-            ART_NAME="PDF-${GITHUB_REF_NAME}"
-          fi
-          echo "ARTIFACT_NAME=$ART_NAME" >> $GITHUB_ENV
+          BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
 
-      # 6. Upload PDF artifact
-      - name: Upload PDF artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.ARTIFACT_NAME }}
-          path: docs/main.pdf
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      # 7. Upload all LaTeX source files as artifact
-      - name: Upload LaTeX sources
-        uses: actions/upload-artifact@v4
-        with:
-          name: Sources-${{ env.ARTIFACT_NAME }}
-          path: |
-            ./**/*.tex
-            ./**/*.cls
-            ./**/*.sty
-            ./**/*.bib
-            ./**/*.bst
-            ./img/**
-            ./figs/**
-            ./images/**
-            ./figures/**
+          # clone gh-pages branch
+          git fetch origin gh-pages || true
+          git checkout gh-pages || git checkout --orphan gh-pages
+
+          mkdir -p "$BRANCH"
+          cp docs/main.pdf "$BRANCH/main.pdf"
+
+          # garante que index.html está sempre no root
+          cp docs/index.html index.html || true
+
+          git add "$BRANCH/main.pdf" index.html || true
+          git commit -m "Update PDF for branch $BRANCH [skip ci]" || echo "No changes"
+          git push origin gh-pages
