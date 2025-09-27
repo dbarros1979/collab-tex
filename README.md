@@ -65,10 +65,11 @@ Click the link to open the PDF — no setup required.
 
 ### Technical Reviewers (optional)
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/YOUR-USERNAME/collab-tex.git
    cd collab-tex
-````
+    ````
 
 2. Install TeX Live (before any editor/plugin):
 
