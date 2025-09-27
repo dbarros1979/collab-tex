@@ -1,4 +1,4 @@
-name: Build LaTeX PDF for PRs and Branches
+name: Build LaTeX PDF and Deploy Pages
 
 on:
   push:
@@ -23,27 +23,28 @@ jobs:
         run: |
           mkdir -p docs
           pdflatex -interaction=nonstopmode -output-directory=docs main.tex
-          bibtex docs/main || true
+          bibtex docs/main.aux || true
           pdflatex -interaction=nonstopmode -output-directory=docs main.tex
           pdflatex -interaction=nonstopmode -output-directory=docs main.tex
 
-      - name: Deploy PDF to GitHub Pages (branch subfolder)
-        run: |
-          BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+        
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: docs/
 
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-          # clone gh-pages branch
-          git fetch origin gh-pages || true
-          git checkout gh-pages || git checkout --orphan gh-pages
-
-          mkdir -p "$BRANCH"
-          cp docs/main.pdf "$BRANCH/main.pdf"
-
-          # garante que index.html está sempre no root
-          cp docs/index.html index.html || true
-
-          git add "$BRANCH/main.pdf" index.html || true
-          git commit -m "Update PDF for branch $BRANCH [skip ci]" || echo "No changes"
-          git push origin gh-pages
+  deploy:
+    needs: build_pdf
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2

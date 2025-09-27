@@ -3,105 +3,396 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Collab-Tex Online Preview</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collab-Tex - Online LaTeX Editor</title>
     <style>
+        :root {
+            --primary-color: #2962ff;
+            --sidebar-width: 250px;
+            --header-height: 60px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            overflow: hidden;
         }
 
-        h1 {
-            color: #333;
+        .header {
+            height: var(--header-height);
+            background-color: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
 
-        #controls {
-            margin-bottom: 20px;
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
         }
 
         select,
         button {
-            padding: 5px 10px;
-            margin-right: 10px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            cursor: pointer;
         }
 
-        iframe {
-            border: 1px solid #ccc;
-            border-radius: 6px;
+        button {
+            background: rgba(255, 255, 255, 0.3);
+            transition: background 0.2s;
         }
 
-        .files {
-            margin-top: 20px;
+        button:hover {
+            background: rgba(255, 255, 255, 0.4);
         }
 
-        .files ul {
+        .container {
+            display: flex;
+            height: calc(100vh - var(--header-height));
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            background: #f5f5f5;
+            border-right: 1px solid #ddd;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .file-tree h3 {
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        .file-list {
             list-style: none;
-            padding-left: 0;
         }
 
-        .files li {
+        .file-item {
+            padding: 8px 10px;
+            cursor: pointer;
+            border-radius: 4px;
             margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+        }
+
+        .file-item:hover {
+            background: #e9e9e9;
+        }
+
+        .file-item.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .file-item::before {
+            content: "📄";
+            margin-right: 8px;
+        }
+
+        .folder-item::before {
+            content: "📁";
+        }
+
+        .editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-toolbar {
+            padding: 10px;
+            background: #f9f9f9;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            gap: 10px;
+        }
+
+        .editor-area {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .code-editor {
+            flex: 1;
+            border-right: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-header {
+            padding: 10px;
+            background: #f0f0f0;
+            border-bottom: 1px solid #ddd;
+            font-weight: bold;
+        }
+
+        #texEditor {
+            flex: 1;
+            border: none;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: none;
+            outline: none;
+        }
+
+        .pdf-preview {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .preview-header {
+            padding: 10px;
+            background: #f0f0f0;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #pdfFrame {
+            flex: 1;
+            border: none;
+        }
+
+        .status-bar {
+            padding: 8px 15px;
+            background: #f5f5f5;
+            border-top: 1px solid #ddd;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .editor-area {
+                flex-direction: column;
+            }
+
+            .code-editor,
+            .pdf-preview {
+                height: 50%;
+            }
         }
     </style>
 </head>
 
 <body>
-    <h1>📄 Collab-Tex Online Preview</h1>
-    <p>Select a branch to view its compiled PDF and source files.</p>
-
-    <div id="controls">
-        <label for="branchSelect">Branch:</label>
-        <select id="branchSelect" onchange="loadBranch()">
-            <option value="main">main</option>
-            <option value="develop">develop</option>
-            <option value="feature-x">feature-x</option>
-        </select>
-        <button onclick="reloadPDF()">Reload PDF</button>
+    <div class="header">
+        <div class="logo">Collab-Tex</div>
+        <div class="controls">
+            <select id="branchSelect">
+                <option value="main">main</option>
+                <option value="develop">develop</option>
+                <option value="feature-x">feature-x</option>
+            </select>
+            <button id="compileBtn">Compile</button>
+            <button id="reloadBtn">Reload PDF</button>
+        </div>
     </div>
 
-    <h2>PDF Preview</h2>
-    <iframe id="pdfFrame" src="main/main.pdf" width="100%" height="800px"></iframe>
+    <div class="container">
+        <div class="sidebar">
+            <div class="file-tree">
+                <h3>Files</h3>
+                <ul class="file-list" id="fileList">
+                    <li class="file-item active" data-file="main.tex">main.tex</li>
+                    <li class="file-item" data-file="references.bib">references.bib</li>
+                    <li class="folder-item">figures/</li>
+                </ul>
+            </div>
+        </div>
 
-    <div class="files">
-        <h2>Source Files</h2>
-        <p>Click to view the LaTeX source files for this branch:</p>
-        <ul id="fileList">
-            <li><a href="https://github.com/dbarros1979/collab-tex/blob/main/main.tex" target="_blank">main.tex</a></li>
-            <li><a href="https://github.com/dbarros1979/collab-tex/blob/main/references.bib" target="_blank">references.bib</a></li>
-            <li><a href="https://github.com/dbarros1979/collab-tex/tree/main/figures" target="_blank">figures/</a></li>
-        </ul>
+        <div class="editor-container">
+            <div class="editor-toolbar">
+                <button id="saveBtn">Save</button>
+                <button id="undoBtn">Undo</button>
+                <button id="redoBtn">Redo</button>
+            </div>
+
+            <div class="editor-area">
+                <div class="code-editor">
+                    <div class="editor-header" id="currentFile">main.tex</div>
+                    <textarea id="texEditor"></textarea>
+                </div>
+
+                <div class="pdf-preview">
+                    <div class="preview-header">
+                        <span>PDF Preview</span>
+                        <button id="fullscreenBtn">Fullscreen</button>
+                    </div>
+                    <iframe id="pdfFrame" src="main/main.pdf"></iframe>
+                </div>
+            </div>
+
+            <div class="status-bar">
+                <span id="statusMessage">Ready</span>
+            </div>
+        </div>
     </div>
 
     <script>
-        function loadBranch() {
-            const branch = document.getElementById('branchSelect').value;
+        // Estado da aplicação
+        let currentBranch = 'main';
+        let currentFile = 'main.tex';
+        let fileContents = {};
 
-            // PDF via GitHub Pages (cada branch gera sua subpasta!)
-            const pdfUrl = `https://dbarros1979.github.io/collab-tex/${branch}/main.pdf`;
-            document.getElementById('pdfFrame').src = pdfUrl;
+        // Elementos DOM
+        const branchSelect = document.getElementById('branchSelect');
+        const fileList = document.getElementById('fileList');
+        const texEditor = document.getElementById('texEditor');
+        const pdfFrame = document.getElementById('pdfFrame');
+        const currentFileElement = document.getElementById('currentFile');
+        const compileBtn = document.getElementById('compileBtn');
+        const reloadBtn = document.getElementById('reloadBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const statusMessage = document.getElementById('statusMessage');
 
-            // Atualiza links para arquivos no GitHub
-            const baseUrl = `https://github.com/dbarros1979/collab-tex/blob/${branch}/`;
-            const files = [
-                "main.tex",
-                "references.bib",
-                "figures/"
-            ];
-            const fileList = document.getElementById('fileList');
-            fileList.innerHTML = "";
-            files.forEach(f => {
-                const li = document.createElement("li");
-                const a = document.createElement("a");
-                a.href = baseUrl + f;
-                a.target = "_blank";
-                a.textContent = f;
-                li.appendChild(a);
-                fileList.appendChild(li);
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function () {
+            loadBranch();
+            loadFile('main.tex');
+
+            // Event listeners
+            branchSelect.addEventListener('change', loadBranch);
+            compileBtn.addEventListener('click', compileProject);
+            reloadBtn.addEventListener('click', reloadPDF);
+            saveBtn.addEventListener('click', saveFile);
+
+            // Navegação de arquivos
+            fileList.addEventListener('click', function (e) {
+                if (e.target.classList.contains('file-item')) {
+                    const fileName = e.target.getAttribute('data-file');
+                    if (fileName) {
+                        // Atualizar seleção visual
+                        document.querySelectorAll('.file-item').forEach(item => {
+                            item.classList.remove('active');
+                        });
+                        e.target.classList.add('active');
+
+                        // Carregar arquivo
+                        loadFile(fileName);
+                    }
+                }
             });
+        });
+
+        // Carregar branch
+        function loadBranch() {
+            currentBranch = branchSelect.value;
+            statusMessage.textContent = `Loading branch: ${currentBranch}`;
+
+            // Atualizar PDF
+            const pdfUrl = `https://dbarros1979.github.io/collab-tex/${currentBranch}/main.pdf`;
+            pdfFrame.src = pdfUrl;
+
+            // Carregar lista de arquivos (simulação - em produção, buscar da API do GitHub)
+            loadFileList();
+
+            statusMessage.textContent = `Branch loaded: ${currentBranch}`;
         }
 
+        // Carregar lista de arquivos
+        function loadFileList() {
+            // Em produção, isso buscaria a lista de arquivos da API do GitHub
+            // Por enquanto, vamos manter a lista estática
+            statusMessage.textContent = 'File list loaded';
+        }
+
+        // Carregar arquivo
+        function loadFile(fileName) {
+            currentFile = fileName;
+            currentFileElement.textContent = fileName;
+
+            // Em produção, isso buscaria o conteúdo do arquivo da API do GitHub
+            // Por enquanto, vamos simular com conteúdo padrão
+            if (!fileContents[fileName]) {
+                // Conteúdo padrão para demonstração
+                if (fileName === 'main.tex') {
+                    fileContents[fileName] = `\\documentclass{article}
+\\usepackage[utf8]{inputenc}
+
+\\title{Collab-Tex Example}
+\\author{Author Name}
+\\date{\\today}
+
+\\begin{document}
+
+\\maketitle
+
+\\section{Introduction}
+This is a simple LaTeX document for Collab-Tex.
+
+\\end{document}`;
+                } else if (fileName === 'references.bib') {
+                    fileContents[fileName] = `@article{example2023,
+    title = {Example Article},
+    author = {Author, A. and Coauthor, B.},
+    journal = {Journal of Examples},
+    year = {2023},
+    volume = {1},
+    pages = {1-10}
+}`;
+                }
+            }
+
+            texEditor.value = fileContents[fileName];
+            statusMessage.textContent = `Loaded: ${fileName}`;
+        }
+
+        // Compilar projeto (simulação)
+        function compileProject() {
+            statusMessage.textContent = 'Compiling...';
+
+            // Em produção, isso dispararia o GitHub Actions workflow
+            // Por enquanto, apenas simulamos com um delay
+            setTimeout(() => {
+                statusMessage.textContent = 'Compilation complete';
+                reloadPDF(); // Recarregar PDF após compilação
+            }, 2000);
+        }
+
+        // Recarregar PDF
         function reloadPDF() {
-            const iframe = document.getElementById('pdfFrame');
-            iframe.src = iframe.src.split("?")[0] + "?t=" + new Date().getTime(); // força refresh
+            const currentSrc = pdfFrame.src;
+            pdfFrame.src = currentSrc.split('?')[0] + '?t=' + new Date().getTime();
+            statusMessage.textContent = 'PDF reloaded';
+        }
+
+        // Salvar arquivo (simulação)
+        function saveFile() {
+            fileContents[currentFile] = texEditor.value;
+            statusMessage.textContent = `Saved: ${currentFile}`;
+
+            // Em produção, isso faria commit das alterações para o GitHub
+            // Por enquanto, apenas atualizamos o estado local
         }
     </script>
 </body>
