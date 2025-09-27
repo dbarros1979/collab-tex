@@ -49,9 +49,37 @@ Here, reviewers and authors can **edit**, **suggest improvements**, and **track 
 - The compiled PDF is always available via the Pages link.
 
 If you prefer to compile locally:
-    ```bash
-    latexmk -pdf example.tex
-    ````
+```bash
+latexmk -pdf example.tex
+````
+
+---
+
+## 📦 Local Setup (Optional)
+
+If you want to **compile LaTeX documents locally**, we recommend installing a TeX distribution **before any editor**. This ensures compatibility with PDF generation, bibliography, and cross-references.
+
+### Recommended Setup
+
+* **TeX distribution:**
+
+  * [TeX Live](https://www.tug.org/texlive/) — cross-platform, includes `pdflatex`, `bibtex`, and other essential tools.
+
+    * On **Ubuntu/Debian**:
+
+      ```bash
+      sudo apt-get update
+      sudo apt-get install texlive-full
+      ```
+    * On **macOS**: [MacTeX](https://www.tug.org/mactex/)
+    * On **Windows**: [TeX Live for Windows](https://www.tug.org/texlive/windows.html)
+
+* **Editor:**
+  Any LaTeX editor will work, but we suggest **VSCode** with the [LaTeX Workshop](https://marketplace.visualstudio.com/items?itemName=James-Yu.latex-workshop) extension.
+
+  * Features: automatic build, PDF preview, syntax highlighting, and error diagnostics.
+
+> ⚠️ **Tip:** Install TeX Live **before** any editor/plugin to avoid compilation errors.
 
 ---
 
@@ -70,5 +98,5 @@ Here, every contribution matters — whether it’s a small tweak or a major rev
 
 ---
 
-📍 *Maintained by dbarros1979(https://github.com/dbarros1979)*
+📍 *Maintained by [dbarros1979](https://github.com/dbarros1979)*
 💡 Inspired by the idea of making academic review more **accessible, transparent, and collaborative**.
