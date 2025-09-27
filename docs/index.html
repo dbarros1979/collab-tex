@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Collab-Tex PDF Preview</title>
+</head>
+
+<body>
+    <h1>Collab-Tex PDF Preview</h1>
+
+    <p>To preview the latest PDF for a branch:</p>
+    <form id="buildForm">
+        <label for="branch">Branch name:</label>
+        <input type="text" id="branch" name="branch" value="main">
+        <button type="button" onclick="triggerBuild()">Build PDF</button>
+    </form>
+
+    <h2>Latest PDF:</h2>
+    <iframe src="main.pdf" width="100%" height="800px"></iframe>
+
+    <script>
+        async function triggerBuild() {
+            const branch = document.getElementById('branch').value;
+            alert('Please trigger the workflow manually in GitHub Actions for branch: ' + branch);
+            // ⚠️ Cannot trigger Actions directly from Pages without authentication
+        }
+    </script>
+</body>
+
+</html>
