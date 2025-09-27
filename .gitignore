@@ -1,0 +1,21 @@
+# Arquivos auxiliares do LaTeX
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.synctex.gz
+*.toc
+*.out
+*.lof
+*.lot
+
+# Arquivos de PDF gerados
+*.pdf
+
+# Arquivos de backup temporários do editor
+*~
+*.bak
+*.backup
+*.swp
