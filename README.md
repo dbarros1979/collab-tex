@@ -35,9 +35,9 @@ Click the link to open the PDF — no setup required.
 
 | Branch Name       | PDF Preview Link                                      |
 |------------------|------------------------------------------------------|
-| `main`           | [View PDF](https://YOUR-USERNAME.github.io/collab-tex/main.pdf) |
-| `draft`          | [View PDF](https://YOUR-USERNAME.github.io/collab-tex/draft.pdf) |
-| `feature-x`      | [View PDF](https://YOUR-USERNAME.github.io/collab-tex/feature-x.pdf) |
+| `main`           | [View PDF](https://dbarros1979.github.io/collab-tex//main.pdf) |
+| `draft`          | [View PDF](https://dbarros1979.github.io/collab-tex/draft.pdf) |
+| `feature-x`      | [View PDF](https://dbarros1979.github.io/collab-tex//feature-x.pdf) |
 
 > ⚠️ Tip: The PDF on Pages always reflects the **latest workflow run** for that branch.
 
@@ -45,16 +45,14 @@ Click the link to open the PDF — no setup required.
 
 ## 🛠️ Repository Structure
 
-```
-
-collab-tex/
-│── docs/               # Compiled PDFs (served by GitHub Pages)
-│── figures/            # Images used in the documents
-│── references.bib      # Bibliography file
-│── example.tex         # Example LaTeX document
-│── .github/workflows/  # Compilation workflow
-
-````
+    ```
+    collab-tex/
+    │── docs/               # Compiled PDFs (served by GitHub Pages)
+    │── figures/            # Images used in the documents
+    │── references.bib      # Bibliography file
+    │── example.tex         # Example LaTeX document
+    │── .github/workflows/  # Compilation workflow
+    ````
 
 ---
 
