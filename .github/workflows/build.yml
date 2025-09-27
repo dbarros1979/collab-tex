@@ -13,15 +13,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up TeX Live
+      - name: Install TeX Live
         uses: teatimeguest/setup-texlive-action@v2
         with:
           packages: scheme-full
+          update: true
 
       - name: Compile LaTeX document
         run: |
+          # Create output directory
           mkdir -p docs
-          latexmk -pdf -interaction=nonstopmode -output-directory=docs example.tex
+
+          # Step 1: First pdflatex run
+          pdflatex -interaction=nonstopmode -output-directory=docs example.tex
+
+          # Step 2: Run bibtex (uses .aux from first pdflatex)
+          bibtex docs/example
+
+          # Step 3: Second pdflatex run to update references
+          pdflatex -interaction=nonstopmode -output-directory=docs example.tex
+
+          # Step 4: Third pdflatex run to finalize cross-references
+          pdflatex -interaction=nonstopmode -output-directory=docs example.tex
 
       - name: Upload PDF as artifact
         uses: actions/upload-artifact@v4
