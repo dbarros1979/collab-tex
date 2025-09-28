@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Collab-Tex - Online LaTeX Editor</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/scroll/simplescrollbars.min.css">
     <style>
         /* CSS Variables for consistent theming */
         :root {
@@ -77,6 +80,54 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            position: relative;
+        }
+
+        .branch-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .branch-dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: var(--sidebar-bg);
+            min-width: 200px;
+            box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+            z-index: 1;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            top: 100%;
+            left: 0;
+            margin-top: 5px;
+        }
+
+        .branch-dropdown-content.show {
+            display: block;
+        }
+
+        .branch-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: background 0.2s;
+        }
+
+        .branch-item:hover {
+            background: var(--hover-color);
+        }
+
+        .branch-item.active {
+            background: var(--primary-color);
+        }
+
+        .branch-actions {
+            display: flex;
+            gap: 10px;
+            padding: 10px 15px;
+            border-top: 1px solid var(--border-color);
         }
 
         select {
@@ -120,6 +171,14 @@
 
         .btn-success:hover {
             background: #2e9845;
+        }
+
+        .btn-danger {
+            background: var(--danger-color);
+        }
+
+        .btn-danger:hover {
+            background: #d33426;
         }
 
         /* Main container */
@@ -297,19 +356,17 @@
             background: var(--primary-color);
         }
 
-        #texEditor {
+        /* CodeMirror customization */
+        .CodeMirror {
             flex: 1;
-            background: var(--editor-bg);
-            color: var(--text-light);
-            border: none;
-            padding: 15px;
+            height: auto;
             font-family: 'Courier New', monospace;
             font-size: 14px;
             line-height: 1.5;
-            resize: none;
-            outline: none;
-            white-space: pre;
-            overflow: auto;
+        }
+
+        .CodeMirror-scroll {
+            overflow: auto !important;
         }
 
         #pdfFrame {
@@ -424,6 +481,26 @@
         .compiling {
             animation: pulse 1.5s infinite;
         }
+
+        /* User avatars for collaborators */
+        .user-item {
+            padding: 8px 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .user-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            color: white;
+        }
     </style>
 </head>
 
@@ -437,11 +514,31 @@
         <div class="header-controls">
             <div class="branch-selector">
                 <i class="fas fa-code-branch"></i>
-                <select id="branchSelect">
-                    <option value="main">main</option>
-                    <option value="develop">develop</option>
-                    <option value="feature-x">feature-x</option>
-                </select>
+                <div class="branch-dropdown">
+                    <button class="btn btn-secondary" id="branchDropdownBtn">
+                        <span id="currentBranchDisplay">main</span> <i class="fas fa-caret-down"></i>
+                    </button>
+                    <div class="branch-dropdown-content" id="branchDropdown">
+                        <div class="branch-item active" data-branch="main">
+                            <span>main</span>
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <div class="branch-item" data-branch="develop">
+                            <span>develop</span>
+                        </div>
+                        <div class="branch-item" data-branch="feature-x">
+                            <span>feature-x</span>
+                        </div>
+                        <div class="branch-actions">
+                            <button class="btn btn-secondary" id="newBranchBtn">
+                                <i class="fas fa-plus"></i> New Branch
+                            </button>
+                            <button class="btn btn-secondary" id="manageBranchesBtn">
+                                <i class="fas fa-cog"></i> Manage
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <button class="btn" id="compileBtn">
                 <i class="fas fa-play"></i> Compile
@@ -480,6 +577,20 @@
                                 <i class="fas fa-chart-bar"></i> chart.pdf
                             </li>
                         </div>
+                        <li class="folder-item">
+                            <i class="fas fa-folder"></i> sections
+                        </li>
+                        <div class="folder-contents">
+                            <li class="file-item" data-file="sections/introduction.tex">
+                                <i class="fas fa-file-code"></i> introduction.tex
+                            </li>
+                            <li class="file-item" data-file="sections/methodology.tex">
+                                <i class="fas fa-file-code"></i> methodology.tex
+                            </li>
+                            <li class="file-item" data-file="sections/results.tex">
+                                <i class="fas fa-file-code"></i> results.tex
+                            </li>
+                        </div>
                     </ul>
                 </div>
             </div>
@@ -487,9 +598,17 @@
                 <h3><i class="fas fa-users"></i> Collaborators</h3>
                 <div id="collaboratorsList">
                     <div class="user-item">
-                        <i class="fas fa-user"></i> dbarros1979 (You)
+                        <div class="user-avatar">DB</div>
+                        <span>dbarros1979 (You)</span>
                     </div>
-                    <!-- More users would appear here in a real implementation -->
+                    <div class="user-item">
+                        <div class="user-avatar" style="background-color: var(--secondary-color);">JD</div>
+                        <span>jdoe</span>
+                    </div>
+                    <div class="user-item">
+                        <div class="user-avatar" style="background-color: var(--warning-color);">AS</div>
+                        <span>asmith</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -516,9 +635,12 @@
                             <button class="btn btn-secondary" id="redoBtn" title="Redo">
                                 <i class="fas fa-redo"></i>
                             </button>
+                            <button class="btn btn-secondary" id="wordCountBtn" title="Word Count">
+                                <i class="fas fa-font"></i>
+                            </button>
                         </div>
                     </div>
-                    <textarea id="texEditor" spellcheck="false"></textarea>
+                    <div id="texEditor"></div>
                 </div>
 
                 <!-- Resize handle -->
@@ -529,6 +651,12 @@
                     <div class="panel-header">
                         <span class="panel-title">PDF Preview</span>
                         <div class="panel-controls">
+                            <button class="btn btn-secondary" id="zoomOutBtn" title="Zoom Out">
+                                <i class="fas fa-search-minus"></i>
+                            </button>
+                            <button class="btn btn-secondary" id="zoomInBtn" title="Zoom In">
+                                <i class="fas fa-search-plus"></i>
+                            </button>
                             <button class="btn btn-secondary" id="fullscreenBtn" title="Fullscreen">
                                 <i class="fas fa-expand"></i>
                             </button>
@@ -565,11 +693,27 @@
                 <i class="fas fa-save" id="saveStatus"></i>
                 <span>All changes saved</span>
             </div>
+            <div class="status-item">
+                <i class="fas fa-code" id="latexStatus"></i>
+                <span>LaTeX</span>
+            </div>
         </div>
         <div class="status-item">
             <span id="statusMessage">Ready</span>
         </div>
     </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/stex/stex.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/scroll/simplescrollbars.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/brace-fold.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/comment-fold.min.js"></script>
 
     <script>
         // Application state
@@ -579,9 +723,16 @@
         let openTabs = ['main.tex'];
         let isCompiling = false;
         let isLoggedIn = false; // Would be set based on authentication
+        let editor; // CodeMirror editor instance
+        let editHistory = {};
+        let editHistoryIndex = {};
 
         // DOM elements
-        const branchSelect = document.getElementById('branchSelect');
+        const branchDropdownBtn = document.getElementById('branchDropdownBtn');
+        const branchDropdown = document.getElementById('branchDropdown');
+        const currentBranchDisplay = document.getElementById('currentBranchDisplay');
+        const newBranchBtn = document.getElementById('newBranchBtn');
+        const manageBranchesBtn = document.getElementById('manageBranchesBtn');
         const fileList = document.getElementById('fileList');
         const editorTabs = document.getElementById('editorTabs');
         const texEditor = document.getElementById('texEditor');
@@ -592,6 +743,9 @@
         const saveBtn = document.getElementById('saveBtn');
         const undoBtn = document.getElementById('undoBtn');
         const redoBtn = document.getElementById('redoBtn');
+        const wordCountBtn = document.getElementById('wordCountBtn');
+        const zoomOutBtn = document.getElementById('zoomOutBtn');
+        const zoomInBtn = document.getElementById('zoomInBtn');
         const fullscreenBtn = document.getElementById('fullscreenBtn');
         const downloadBtn = document.getElementById('downloadBtn');
         const toggleLog = document.getElementById('toggleLog');
@@ -600,6 +754,7 @@
         const statusMessage = document.getElementById('statusMessage');
         const connectionStatus = document.getElementById('connectionStatus');
         const saveStatus = document.getElementById('saveStatus');
+        const latexStatus = document.getElementById('latexStatus');
         const resizeHandle = document.getElementById('resizeHandle');
 
         // Initialize the application
@@ -616,6 +771,7 @@
             fileContents['main.tex'] = `\\documentclass{article}
 \\usepackage[utf8]{inputenc}
 \\usepackage{graphicx}
+\\usepackage{amsmath}
 
 \\title{Collab-Tex: A Collaborative LaTeX Editor}
 \\author{Your Name}
@@ -636,6 +792,13 @@ This is a collaborative LaTeX document edited using Collab-Tex.
     \\item Overleaf-like interface
 \\end{itemize}
 
+\\section{Mathematical Content}
+We can include mathematical formulas like this:
+\\[
+    E = mc^2
+\\]
+Or inline formulas like $\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$.
+
 \\section{Conclusion}
 Collab-Tex makes LaTeX collaboration simple and accessible.
 
@@ -654,7 +817,59 @@ Collab-Tex makes LaTeX collaboration simple and accessible.
     pages = {1--5}
 }`;
 
-            // Initialize UI state
+            fileContents['sections/introduction.tex'] = `\\section{Introduction}
+This is the introduction section of our document.
+
+\\subsection{Motivation}
+The motivation behind this work is to create a better collaborative LaTeX editor.`;
+
+            fileContents['sections/methodology.tex'] = `\\section{Methodology}
+This section describes our methodology.
+
+\\subsection{Approach}
+We followed a user-centered design approach.`;
+
+            fileContents['sections/results.tex'] = `\\section{Results}
+This section presents our results.
+
+\\subsection{Performance}
+The performance of our system exceeded expectations.`;
+
+            // Initialize edit history for each file
+            for (const file in fileContents) {
+                editHistory[file] = [fileContents[file]];
+                editHistoryIndex[file] = 0;
+            }
+
+            // Initialize CodeMirror editor
+            editor = CodeMirror(texEditor, {
+                mode: "stex",
+                theme: "monokai",
+                lineNumbers: true,
+                lineWrapping: true,
+                matchBrackets: true,
+                autoCloseBrackets: true,
+                styleActiveLine: true,
+                scrollbarStyle: "simple",
+                foldGutter: true,
+                gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+                extraKeys: {
+                    "Ctrl-S": saveFile,
+                    "Cmd-S": saveFile,
+                    "Ctrl-Enter": compileProject,
+                    "Cmd-Enter": compileProject,
+                    "Ctrl-Z": undoEdit,
+                    "Cmd-Z": undoEdit,
+                    "Ctrl-Y": redoEdit,
+                    "Shift-Ctrl-Y": redoEdit,
+                    "Cmd-Y": redoEdit,
+                    "Shift-Cmd-Y": redoEdit,
+                    "Tab": "indentMore",
+                    "Shift-Tab": "indentLess"
+                }
+            });
+
+            // Update UI state
             updateSaveStatus(true);
             updateConnectionStatus(true);
         }
@@ -662,7 +877,21 @@ Collab-Tex makes LaTeX collaboration simple and accessible.
         // Set up all event listeners
         function setupEventListeners() {
             // Branch selection
-            branchSelect.addEventListener('change', loadBranch);
+            branchDropdownBtn.addEventListener('click', toggleBranchDropdown);
+            document.addEventListener('click', closeBranchDropdown);
+
+            // Branch actions
+            newBranchBtn.addEventListener('click', createNewBranch);
+            manageBranchesBtn.addEventListener('click', manageBranches);
+
+            // Branch items
+            document.querySelectorAll('.branch-item').forEach(item => {
+                item.addEventListener('click', function () {
+                    if (!this.classList.contains('active')) {
+                        switchBranch(this.getAttribute('data-branch'));
+                    }
+                });
+            });
 
             // Control buttons
             compileBtn.addEventListener('click', compileProject);
@@ -670,6 +899,9 @@ Collab-Tex makes LaTeX collaboration simple and accessible.
             saveBtn.addEventListener('click', saveFile);
             undoBtn.addEventListener('click', undoEdit);
             redoBtn.addEventListener('click', redoEdit);
+            wordCountBtn.addEventListener('click', showWordCount);
+            zoomOutBtn.addEventListener('click', zoomOutPDF);
+            zoomInBtn.addEventListener('click', zoomInPDF);
             fullscreenBtn.addEventListener('click', toggleFullscreen);
             downloadBtn.addEventListener('click', downloadPDF);
             toggleLog.addEventListener('click', toggleCompilationLog);
@@ -681,13 +913,76 @@ Collab-Tex makes LaTeX collaboration simple and accessible.
             editorTabs.addEventListener('click', handleTabClick);
 
             // Text editor changes
-            texEditor.addEventListener('input', handleEditorInput);
+            editor.on('change', handleEditorChange);
 
             // Resize handle for panels
             setupResizeHandle();
 
             // Keyboard shortcuts
             document.addEventListener('keydown', handleKeyboardShortcuts);
+        }
+
+        // Toggle branch dropdown
+        function toggleBranchDropdown(e) {
+            e.stopPropagation();
+            branchDropdown.classList.toggle('show');
+        }
+
+        // Close branch dropdown when clicking outside
+        function closeBranchDropdown(e) {
+            if (!branchDropdown.contains(e.target) && e.target !== branchDropdownBtn) {
+                branchDropdown.classList.remove('show');
+            }
+        }
+
+        // Switch to a different branch
+        function switchBranch(branchName) {
+            // Update active branch in UI
+            document.querySelectorAll('.branch-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelector(`.branch-item[data-branch="${branchName}"]`).classList.add('active');
+
+            currentBranch = branchName;
+            currentBranchDisplay.textContent = branchName;
+
+            // Close dropdown
+            branchDropdown.classList.remove('show');
+
+            // Load branch content
+            loadBranch();
+        }
+
+        // Create a new branch
+        function createNewBranch() {
+            const branchName = prompt('Enter new branch name:');
+            if (branchName && branchName.trim() !== '') {
+                // In a real app, this would create a new branch via GitHub API
+                addToLog(`Creating new branch: ${branchName}`, 'info');
+
+                // Add to UI
+                const newBranchItem = document.createElement('div');
+                newBranchItem.className = 'branch-item';
+                newBranchItem.setAttribute('data-branch', branchName);
+                newBranchItem.innerHTML = `<span>${branchName}</span>`;
+
+                // Insert before the branch actions
+                branchDropdown.insertBefore(newBranchItem, document.querySelector('.branch-actions'));
+
+                // Add event listener
+                newBranchItem.addEventListener('click', function () {
+                    switchBranch(branchName);
+                });
+
+                statusMessage.textContent = `Created branch: ${branchName}`;
+            }
+        }
+
+        // Manage branches
+        function manageBranches() {
+            addToLog('Opening branch management...', 'info');
+            statusMessage.textContent = 'Branch management (simulated)';
+            // In a real app, this would open a branch management modal
         }
 
         // Handle file clicks in the sidebar
@@ -716,9 +1011,29 @@ Collab-Tex makes LaTeX collaboration simple and accessible.
         }
 
         // Handle editor input changes
-        function handleEditorInput() {
-            fileContents[currentFile] = texEditor.value;
+        function handleEditorChange() {
+            const content = editor.getValue();
+            fileContents[currentFile] = content;
+
+            // Add to edit history if content changed
+            if (editHistory[currentFile][editHistoryIndex[currentFile]] !== content) {
+                editHistoryIndex[currentFile]++;
+                editHistory[currentFile][editHistoryIndex[currentFile]] = content;
+
+                // Remove any future history if we're not at the end
+                if (editHistoryIndex[currentFile] < editHistory[currentFile].length - 1) {
+                    editHistory[currentFile] = editHistory[currentFile].slice(0, editHistoryIndex[currentFile] + 1);
+                }
+
+                // Limit history size
+                if (editHistory[currentFile].length > 50) {
+                    editHistory[currentFile].shift();
+                    editHistoryIndex[currentFile]--;
+                }
+            }
+
             updateSaveStatus(false);
+            updateUndoRedoButtons();
         }
 
         // Handle keyboard shortcuts
@@ -766,7 +1081,6 @@ Collab-Tex makes LaTeX collaboration simple and accessible.
 
         // Load selected branch
         function loadBranch() {
-            currentBranch = branchSelect.value;
             statusMessage.textContent = `Loading branch: ${currentBranch}`;
 
             // Update PDF preview
@@ -832,10 +1146,13 @@ Collab-Tex makes LaTeX collaboration simple and accessible.
             // Update current file and load content
             currentFile = fileName;
             currentFileElement.textContent = fileName;
-            texEditor.value = fileContents[fileName] || '';
+
+            // Set editor content
+            editor.setValue(fileContents[fileName] || '');
 
             // Update save status
             updateSaveStatus(true);
+            updateUndoRedoButtons();
         }
 
         // Close a tab
@@ -940,16 +1257,52 @@ Collab-Tex makes LaTeX collaboration simple and accessible.
 
         // Undo last edit
         function undoEdit() {
-            // Basic undo functionality (would be more sophisticated in a real editor)
-            statusMessage.textContent = 'Undo';
-            // Implementation would require maintaining an edit history
+            if (editHistoryIndex[currentFile] > 0) {
+                editHistoryIndex[currentFile]--;
+                const content = editHistory[currentFile][editHistoryIndex[currentFile]];
+                editor.setValue(content);
+                fileContents[currentFile] = content;
+                updateUndoRedoButtons();
+                statusMessage.textContent = 'Undo';
+            }
         }
 
         // Redo last undone edit
         function redoEdit() {
-            // Basic redo functionality
-            statusMessage.textContent = 'Redo';
-            // Implementation would require maintaining an edit history
+            if (editHistoryIndex[currentFile] < editHistory[currentFile].length - 1) {
+                editHistoryIndex[currentFile]++;
+                const content = editHistory[currentFile][editHistoryIndex[currentFile]];
+                editor.setValue(content);
+                fileContents[currentFile] = content;
+                updateUndoRedoButtons();
+                statusMessage.textContent = 'Redo';
+            }
+        }
+
+        // Update undo/redo button states
+        function updateUndoRedoButtons() {
+            undoBtn.disabled = editHistoryIndex[currentFile] <= 0;
+            redoBtn.disabled = editHistoryIndex[currentFile] >= editHistory[currentFile].length - 1;
+        }
+
+        // Show word count
+        function showWordCount() {
+            const content = editor.getValue();
+            const words = content.split(/\s+/).filter(word => word.length > 0).length;
+            const characters = content.length;
+            statusMessage.textContent = `Words: ${words}, Characters: ${characters}`;
+        }
+
+        // Zoom out PDF
+        function zoomOutPDF() {
+            // In a real implementation, this would adjust the iframe zoom level
+            statusMessage.textContent = 'Zooming out PDF';
+        }
+
+        // Zoom in PDF
+        function zoomInPDF() {
+            // In a real implementation, this would adjust the iframe zoom level
+            statusMessage.textContent = 'Zooming in PDF';
         }
 
         // Toggle fullscreen mode for PDF preview
@@ -1021,12 +1374,18 @@ Collab-Tex makes LaTeX collaboration simple and accessible.
 
             // In a real implementation, this would fetch content from GitHub API
             if (fileContents[fileName]) {
-                texEditor.value = fileContents[fileName];
+                editor.setValue(fileContents[fileName]);
             } else {
-                texEditor.value = `% File: ${fileName}\n% This file is empty. Start editing!`;
-                fileContents[fileName] = texEditor.value;
+                const defaultContent = `% File: ${fileName}\n% This file is empty. Start editing!`;
+                editor.setValue(defaultContent);
+                fileContents[fileName] = defaultContent;
+
+                // Initialize edit history for new file
+                editHistory[fileName] = [defaultContent];
+                editHistoryIndex[fileName] = 0;
             }
 
+            updateUndoRedoButtons();
             statusMessage.textContent = `Loaded: ${fileName}`;
         }
     </script>
