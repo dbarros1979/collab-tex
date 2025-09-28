@@ -93,6 +93,8 @@
             position: absolute;
             background-color: var(--sidebar-bg);
             min-width: 200px;
+            max-height: 300px;
+            overflow-y: auto;
             box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
             z-index: 1;
             border-radius: 4px;
@@ -121,22 +123,6 @@
 
         .branch-item.active {
             background: var(--primary-color);
-        }
-
-        .branch-actions {
-            display: flex;
-            gap: 10px;
-            padding: 10px 15px;
-            border-top: 1px solid var(--border-color);
-        }
-
-        select {
-            background: var(--sidebar-bg);
-            color: var(--text-light);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            padding: 6px 10px;
-            font-size: 0.9rem;
         }
 
         .btn {
@@ -179,6 +165,11 @@
 
         .btn-danger:hover {
             background: #d33426;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
         /* Main container */
@@ -318,12 +309,20 @@
             overflow: hidden;
         }
 
-        .code-panel,
-        .preview-panel {
+        .code-panel {
             flex: 1;
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            min-width: 300px;
+        }
+
+        .preview-panel {
+            width: 50%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border-left: 1px solid var(--border-color);
         }
 
         .panel-header {
@@ -345,17 +344,6 @@
             gap: 10px;
         }
 
-        .resize-handle {
-            width: 5px;
-            background: var(--border-color);
-            cursor: col-resize;
-            transition: background 0.2s;
-        }
-
-        .resize-handle:hover {
-            background: var(--primary-color);
-        }
-
         /* CodeMirror customization */
         .CodeMirror {
             flex: 1;
@@ -369,10 +357,63 @@
             overflow: auto !important;
         }
 
-        #pdfFrame {
+        /* PDF Preview Styles */
+        .pdf-container {
             flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #f0f0f0;
+            overflow: hidden;
+        }
+
+        .pdf-viewer {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            overflow: auto;
+            background: #525659;
+            padding: 0;
+        }
+
+        .pdf-placeholder {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: var(--text-muted);
+            background: var(--sidebar-bg);
+        }
+
+        .pdf-placeholder i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            color: var(--border-color);
+        }
+
+        .pdf-frame {
+            width: 100%;
+            height: 100%;
             border: none;
             background: white;
+        }
+
+        .pdf-error {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: var(--danger-color);
+            background: var(--sidebar-bg);
+            padding: 20px;
+            text-align: center;
+        }
+
+        .pdf-error i {
+            font-size: 3rem;
+            margin-bottom: 15px;
         }
 
         /* Footer styles */
@@ -453,13 +494,8 @@
 
             .code-panel,
             .preview-panel {
-                height: 50%;
-            }
-
-            .resize-handle {
                 width: 100%;
-                height: 5px;
-                cursor: row-resize;
+                height: 50%;
             }
         }
 
@@ -501,6 +537,23 @@
             font-size: 0.7rem;
             color: white;
         }
+
+        /* Loading indicator */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, .3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
 
@@ -516,26 +569,11 @@
                 <i class="fas fa-code-branch"></i>
                 <div class="branch-dropdown">
                     <button class="btn btn-secondary" id="branchDropdownBtn">
-                        <span id="currentBranchDisplay">main</span> <i class="fas fa-caret-down"></i>
+                        <span id="currentBranchDisplay">Loading...</span> <i class="fas fa-caret-down"></i>
                     </button>
                     <div class="branch-dropdown-content" id="branchDropdown">
-                        <div class="branch-item active" data-branch="main">
-                            <span>main</span>
-                            <i class="fas fa-check"></i>
-                        </div>
-                        <div class="branch-item" data-branch="develop">
-                            <span>develop</span>
-                        </div>
-                        <div class="branch-item" data-branch="feature-x">
-                            <span>feature-x</span>
-                        </div>
-                        <div class="branch-actions">
-                            <button class="btn btn-secondary" id="newBranchBtn">
-                                <i class="fas fa-plus"></i> New Branch
-                            </button>
-                            <button class="btn btn-secondary" id="manageBranchesBtn">
-                                <i class="fas fa-cog"></i> Manage
-                            </button>
+                        <div class="branch-item">
+                            <span class="loading"></span> Loading branches...
                         </div>
                     </div>
                 </div>
@@ -560,37 +598,9 @@
                 <h3><i class="fas fa-project-diagram"></i> Project Files</h3>
                 <div class="file-tree">
                     <ul class="file-list" id="fileList">
-                        <li class="file-item active" data-file="main.tex">
-                            <i class="fas fa-file-code"></i> main.tex
+                        <li class="file-item">
+                            <span class="loading"></span> Loading files...
                         </li>
-                        <li class="file-item" data-file="references.bib">
-                            <i class="fas fa-file-alt"></i> references.bib
-                        </li>
-                        <li class="folder-item">
-                            <i class="fas fa-folder"></i> figures
-                        </li>
-                        <div class="folder-contents">
-                            <li class="file-item" data-file="figures/diagram1.png">
-                                <i class="fas fa-file-image"></i> diagram1.png
-                            </li>
-                            <li class="file-item" data-file="figures/chart.pdf">
-                                <i class="fas fa-chart-bar"></i> chart.pdf
-                            </li>
-                        </div>
-                        <li class="folder-item">
-                            <i class="fas fa-folder"></i> sections
-                        </li>
-                        <div class="folder-contents">
-                            <li class="file-item" data-file="sections/introduction.tex">
-                                <i class="fas fa-file-code"></i> introduction.tex
-                            </li>
-                            <li class="file-item" data-file="sections/methodology.tex">
-                                <i class="fas fa-file-code"></i> methodology.tex
-                            </li>
-                            <li class="file-item" data-file="sections/results.tex">
-                                <i class="fas fa-file-code"></i> results.tex
-                            </li>
-                        </div>
                     </ul>
                 </div>
             </div>
@@ -616,23 +626,21 @@
         <!-- Editor area with tabs and panels -->
         <div class="editor-area">
             <div class="editor-tabs" id="editorTabs">
-                <div class="editor-tab active" data-file="main.tex">
-                    <i class="fas fa-file-code"></i> main.tex
-                    <span class="editor-tab-close"><i class="fas fa-times"></i></span>
+                <div class="editor-tab">
+                    <i class="fas fa-file"></i> No file open
                 </div>
-                <!-- More tabs would appear here as files are opened -->
             </div>
 
             <div class="editor-container">
                 <!-- Code editor panel -->
                 <div class="code-panel">
                     <div class="panel-header">
-                        <span class="panel-title" id="currentFile">main.tex</span>
+                        <span class="panel-title" id="currentFile">Select a file to edit</span>
                         <div class="panel-controls">
-                            <button class="btn btn-secondary" id="undoBtn" title="Undo">
+                            <button class="btn btn-secondary" id="undoBtn" title="Undo" disabled>
                                 <i class="fas fa-undo"></i>
                             </button>
-                            <button class="btn btn-secondary" id="redoBtn" title="Redo">
+                            <button class="btn btn-secondary" id="redoBtn" title="Redo" disabled>
                                 <i class="fas fa-redo"></i>
                             </button>
                             <button class="btn btn-secondary" id="wordCountBtn" title="Word Count">
@@ -642,9 +650,6 @@
                     </div>
                     <div id="texEditor"></div>
                 </div>
-
-                <!-- Resize handle -->
-                <div class="resize-handle" id="resizeHandle"></div>
 
                 <!-- PDF preview panel -->
                 <div class="preview-panel">
@@ -665,7 +670,12 @@
                             </button>
                         </div>
                     </div>
-                    <iframe id="pdfFrame" src="main/main.pdf"></iframe>
+                    <div class="pdf-container" id="pdfContainer">
+                        <div class="pdf-placeholder" id="pdfPlaceholder">
+                            <i class="fas fa-file-pdf"></i>
+                            <p>PDF will appear here after compilation</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -691,7 +701,7 @@
             </div>
             <div class="status-item">
                 <i class="fas fa-save" id="saveStatus"></i>
-                <span>All changes saved</span>
+                <span>No changes</span>
             </div>
             <div class="status-item">
                 <i class="fas fa-code" id="latexStatus"></i>
@@ -699,7 +709,7 @@
             </div>
         </div>
         <div class="status-item">
-            <span id="statusMessage">Ready</span>
+            <span id="statusMessage">Loading repository...</span>
         </div>
     </div>
 
@@ -716,27 +726,32 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/comment-fold.min.js"></script>
 
     <script>
+        // GitHub repository configuration
+        const owner = "dbarros1979";
+        const repo = "collab-tex";
+
         // Application state
         let currentBranch = 'main';
-        let currentFile = 'main.tex';
+        let currentFile = null;
         let fileContents = {};
-        let openTabs = ['main.tex'];
+        let openTabs = [];
         let isCompiling = false;
-        let isLoggedIn = false; // Would be set based on authentication
-        let editor; // CodeMirror editor instance
+        let isLoggedIn = false;
+        let editor;
         let editHistory = {};
         let editHistoryIndex = {};
+        let pdfFrame = null;
+        let currentZoom = 1.0;
 
         // DOM elements
         const branchDropdownBtn = document.getElementById('branchDropdownBtn');
         const branchDropdown = document.getElementById('branchDropdown');
         const currentBranchDisplay = document.getElementById('currentBranchDisplay');
-        const newBranchBtn = document.getElementById('newBranchBtn');
-        const manageBranchesBtn = document.getElementById('manageBranchesBtn');
         const fileList = document.getElementById('fileList');
         const editorTabs = document.getElementById('editorTabs');
         const texEditor = document.getElementById('texEditor');
-        const pdfFrame = document.getElementById('pdfFrame');
+        const pdfContainer = document.getElementById('pdfContainer');
+        const pdfPlaceholder = document.getElementById('pdfPlaceholder');
         const currentFileElement = document.getElementById('currentFile');
         const compileBtn = document.getElementById('compileBtn');
         const reloadBtn = document.getElementById('reloadBtn');
@@ -755,92 +770,16 @@
         const connectionStatus = document.getElementById('connectionStatus');
         const saveStatus = document.getElementById('saveStatus');
         const latexStatus = document.getElementById('latexStatus');
-        const resizeHandle = document.getElementById('resizeHandle');
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function () {
             initializeApp();
             setupEventListeners();
-            loadBranch();
-            loadFile('main.tex');
+            fetchBranches();
         });
 
         // Initialize application state and UI
         function initializeApp() {
-            // Set up initial file contents (in a real app, this would come from GitHub API)
-            fileContents['main.tex'] = `\\documentclass{article}
-\\usepackage[utf8]{inputenc}
-\\usepackage{graphicx}
-\\usepackage{amsmath}
-
-\\title{Collab-Tex: A Collaborative LaTeX Editor}
-\\author{Your Name}
-\\date{\\today}
-
-\\begin{document}
-
-\\maketitle
-
-\\section{Introduction}
-This is a collaborative LaTeX document edited using Collab-Tex.
-
-\\section{Features}
-\\begin{itemize}
-    \\item Real-time collaboration
-    \\item Automatic PDF compilation
-    \\item GitHub integration
-    \\item Overleaf-like interface
-\\end{itemize}
-
-\\section{Mathematical Content}
-We can include mathematical formulas like this:
-\\[
-    E = mc^2
-\\]
-Or inline formulas like $\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$.
-
-\\section{Conclusion}
-Collab-Tex makes LaTeX collaboration simple and accessible.
-
-\\bibliographystyle{plain}
-\\bibliography{references}
-
-\\end{document}`;
-
-            fileContents['references.bib'] = `@article{collabtex2023,
-    title = {Collab-Tex: Redesigning Academic LaTeX Collaboration},
-    author = {Author, A. and Collaborator, B.},
-    journal = {Journal of Open Source Software},
-    year = {2023},
-    volume = {8},
-    number = {90},
-    pages = {1--5}
-}`;
-
-            fileContents['sections/introduction.tex'] = `\\section{Introduction}
-This is the introduction section of our document.
-
-\\subsection{Motivation}
-The motivation behind this work is to create a better collaborative LaTeX editor.`;
-
-            fileContents['sections/methodology.tex'] = `\\section{Methodology}
-This section describes our methodology.
-
-\\subsection{Approach}
-We followed a user-centered design approach.`;
-
-            fileContents['sections/results.tex'] = `\\section{Results}
-This section presents our results.
-
-\\subsection{Performance}
-The performance of our system exceeded expectations.`;
-
-            // Initialize edit history for each file
-            for (const file in fileContents) {
-                editHistory[file] = [fileContents[file]];
-                editHistoryIndex[file] = 0;
-            }
-
             // Initialize CodeMirror editor
             editor = CodeMirror(texEditor, {
                 mode: "stex",
@@ -853,6 +792,7 @@ The performance of our system exceeded expectations.`;
                 scrollbarStyle: "simple",
                 foldGutter: true,
                 gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+                readOnly: true,
                 extraKeys: {
                     "Ctrl-S": saveFile,
                     "Cmd-S": saveFile,
@@ -869,31 +809,15 @@ The performance of our system exceeded expectations.`;
                 }
             });
 
-            // Update UI state
             updateSaveStatus(true);
             updateConnectionStatus(true);
         }
 
         // Set up all event listeners
         function setupEventListeners() {
-            // Branch selection
             branchDropdownBtn.addEventListener('click', toggleBranchDropdown);
             document.addEventListener('click', closeBranchDropdown);
 
-            // Branch actions
-            newBranchBtn.addEventListener('click', createNewBranch);
-            manageBranchesBtn.addEventListener('click', manageBranches);
-
-            // Branch items
-            document.querySelectorAll('.branch-item').forEach(item => {
-                item.addEventListener('click', function () {
-                    if (!this.classList.contains('active')) {
-                        switchBranch(this.getAttribute('data-branch'));
-                    }
-                });
-            });
-
-            // Control buttons
             compileBtn.addEventListener('click', compileProject);
             reloadBtn.addEventListener('click', reloadPDF);
             saveBtn.addEventListener('click', saveFile);
@@ -906,20 +830,167 @@ The performance of our system exceeded expectations.`;
             downloadBtn.addEventListener('click', downloadPDF);
             toggleLog.addEventListener('click', toggleCompilationLog);
 
-            // File navigation
             fileList.addEventListener('click', handleFileClick);
-
-            // Editor tabs
             editorTabs.addEventListener('click', handleTabClick);
-
-            // Text editor changes
             editor.on('change', handleEditorChange);
-
-            // Resize handle for panels
-            setupResizeHandle();
-
-            // Keyboard shortcuts
             document.addEventListener('keydown', handleKeyboardShortcuts);
+        }
+
+        // Load branches dynamically
+        async function fetchBranches() {
+            try {
+                statusMessage.textContent = 'Loading branches...';
+                const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/branches`);
+
+                if (!res.ok) {
+                    throw new Error(`Failed to fetch branches: ${res.status} ${res.statusText}`);
+                }
+
+                const branches = await res.json();
+
+                const branchDropdown = document.getElementById("branchDropdown");
+                branchDropdown.innerHTML = "";
+
+                branches.forEach(branch => {
+                    const item = document.createElement("div");
+                    item.className = "branch-item";
+                    if (branch.name === currentBranch) {
+                        item.classList.add("active");
+                    }
+                    item.dataset.branch = branch.name;
+                    item.innerHTML = `<span>${branch.name}</span>`;
+                    if (branch.name === currentBranch) {
+                        item.innerHTML += '<i class="fas fa-check"></i>';
+                    }
+                    item.onclick = () => switchBranch(branch.name);
+                    branchDropdown.appendChild(item);
+                });
+
+                currentBranchDisplay.textContent = currentBranch;
+                fetchFileTree(currentBranch);
+
+                statusMessage.textContent = 'Branches loaded';
+                addToLog(`Loaded ${branches.length} branches`, 'info');
+            } catch (error) {
+                console.error('Error fetching branches:', error);
+                statusMessage.textContent = 'Error loading branches';
+                addToLog(`Error loading branches: ${error.message}`, 'error');
+            }
+        }
+
+        // Load file tree dynamically
+        async function fetchFileTree(branch) {
+            try {
+                statusMessage.textContent = 'Loading files...';
+                const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`);
+
+                if (!res.ok) {
+                    throw new Error(`Failed to fetch file tree: ${res.status} ${res.statusText}`);
+                }
+
+                const data = await res.json();
+                const fileList = document.getElementById("fileList");
+                fileList.innerHTML = "";
+
+                const fileTree = {};
+
+                data.tree
+                    .filter(item => item.type === "blob")
+                    .forEach(file => {
+                        const pathParts = file.path.split('/');
+                        let currentLevel = fileTree;
+
+                        for (let i = 0; i < pathParts.length - 1; i++) {
+                            const part = pathParts[i];
+                            if (!currentLevel[part]) {
+                                currentLevel[part] = {};
+                            }
+                            currentLevel = currentLevel[part];
+                        }
+
+                        const fileName = pathParts[pathParts.length - 1];
+                        currentLevel[fileName] = file;
+                    });
+
+                renderFileTree(fileTree, fileList);
+
+                statusMessage.textContent = 'Files loaded';
+                addToLog(`Loaded file tree for branch: ${branch}`, 'info');
+            } catch (error) {
+                console.error('Error fetching file tree:', error);
+                statusMessage.textContent = 'Error loading files';
+                addToLog(`Error loading file tree: ${error.message}`, 'error');
+
+                const fileList = document.getElementById("fileList");
+                fileList.innerHTML = `<li class="file-item"><i class="fas fa-exclamation-triangle"></i> Error loading files</li>`;
+            }
+        }
+
+        // Recursively render file tree
+        function renderFileTree(tree, container, path = '') {
+            for (const key in tree) {
+                if (typeof tree[key] === 'object' && tree[key].path === undefined) {
+                    const folderItem = document.createElement('li');
+                    folderItem.className = 'folder-item';
+                    folderItem.innerHTML = `<i class="fas fa-folder"></i> ${key}`;
+                    container.appendChild(folderItem);
+
+                    const folderContents = document.createElement('div');
+                    folderContents.className = 'folder-contents';
+                    container.appendChild(folderContents);
+
+                    folderItem.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        this.classList.toggle('expanded');
+                    });
+
+                    renderFileTree(tree[key], folderContents, path + key + '/');
+                } else {
+                    const file = tree[key];
+                    const li = document.createElement('li');
+                    li.className = 'file-item';
+                    li.dataset.file = file.path;
+                    li.innerHTML = `${getFileIcon(file.path)} ${key}`;
+                    li.onclick = () => openFile(file.path);
+                    container.appendChild(li);
+                }
+            }
+        }
+
+        // Load file content dynamically
+        async function fetchFileContent(branch, path) {
+            try {
+                statusMessage.textContent = `Loading ${path}...`;
+                const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`);
+
+                if (!res.ok) {
+                    throw new Error(`Failed to fetch file content: ${res.status} ${res.statusText}`);
+                }
+
+                const data = await res.json();
+                const content = atob(data.content);
+                fileContents[path] = content;
+
+                if (!editHistory[path]) {
+                    editHistory[path] = [content];
+                    editHistoryIndex[path] = 0;
+                }
+
+                editor.setValue(content);
+                editor.setOption('readOnly', false);
+
+                statusMessage.textContent = `Loaded: ${path}`;
+                addToLog(`Loaded file: ${path}`, 'info');
+
+                return content;
+            } catch (error) {
+                console.error('Error fetching file content:', error);
+                statusMessage.textContent = `Error loading ${path}`;
+                addToLog(`Error loading file: ${error.message}`, 'error');
+
+                editor.setValue(`% Error loading file: ${path}\n% ${error.message}`);
+                editor.setOption('readOnly', true);
+            }
         }
 
         // Toggle branch dropdown
@@ -937,52 +1008,31 @@ The performance of our system exceeded expectations.`;
 
         // Switch to a different branch
         function switchBranch(branchName) {
-            // Update active branch in UI
             document.querySelectorAll('.branch-item').forEach(item => {
                 item.classList.remove('active');
+                const icon = item.querySelector('i.fa-check');
+                if (icon) icon.remove();
             });
-            document.querySelector(`.branch-item[data-branch="${branchName}"]`).classList.add('active');
+
+            const activeItem = document.querySelector(`.branch-item[data-branch="${branchName}"]`);
+            if (activeItem) {
+                activeItem.classList.add('active');
+                activeItem.innerHTML += '<i class="fas fa-check"></i>';
+            }
 
             currentBranch = branchName;
             currentBranchDisplay.textContent = branchName;
-
-            // Close dropdown
             branchDropdown.classList.remove('show');
 
-            // Load branch content
+            currentFile = null;
+            currentFileElement.textContent = 'Select a file to edit';
+            editor.setValue('');
+            editor.setOption('readOnly', true);
+
+            openTabs = [];
+            editorTabs.innerHTML = '<div class="editor-tab"><i class="fas fa-file"></i> No file open</div>';
+
             loadBranch();
-        }
-
-        // Create a new branch
-        function createNewBranch() {
-            const branchName = prompt('Enter new branch name:');
-            if (branchName && branchName.trim() !== '') {
-                // In a real app, this would create a new branch via GitHub API
-                addToLog(`Creating new branch: ${branchName}`, 'info');
-
-                // Add to UI
-                const newBranchItem = document.createElement('div');
-                newBranchItem.className = 'branch-item';
-                newBranchItem.setAttribute('data-branch', branchName);
-                newBranchItem.innerHTML = `<span>${branchName}</span>`;
-
-                // Insert before the branch actions
-                branchDropdown.insertBefore(newBranchItem, document.querySelector('.branch-actions'));
-
-                // Add event listener
-                newBranchItem.addEventListener('click', function () {
-                    switchBranch(branchName);
-                });
-
-                statusMessage.textContent = `Created branch: ${branchName}`;
-            }
-        }
-
-        // Manage branches
-        function manageBranches() {
-            addToLog('Opening branch management...', 'info');
-            statusMessage.textContent = 'Branch management (simulated)';
-            // In a real app, this would open a branch management modal
         }
 
         // Handle file clicks in the sidebar
@@ -1004,28 +1054,33 @@ The performance of our system exceeded expectations.`;
             const closeBtn = e.target.closest('.editor-tab-close');
 
             if (closeBtn && tab) {
-                closeTab(tab.getAttribute('data-file'));
+                const fileName = tab.getAttribute('data-file');
+                if (fileName) {
+                    closeTab(fileName);
+                }
             } else if (tab) {
-                switchToTab(tab.getAttribute('data-file'));
+                const fileName = tab.getAttribute('data-file');
+                if (fileName) {
+                    switchToTab(fileName);
+                }
             }
         }
 
         // Handle editor input changes
         function handleEditorChange() {
+            if (!currentFile) return;
+
             const content = editor.getValue();
             fileContents[currentFile] = content;
 
-            // Add to edit history if content changed
             if (editHistory[currentFile][editHistoryIndex[currentFile]] !== content) {
                 editHistoryIndex[currentFile]++;
                 editHistory[currentFile][editHistoryIndex[currentFile]] = content;
 
-                // Remove any future history if we're not at the end
                 if (editHistoryIndex[currentFile] < editHistory[currentFile].length - 1) {
                     editHistory[currentFile] = editHistory[currentFile].slice(0, editHistoryIndex[currentFile] + 1);
                 }
 
-                // Limit history size
                 if (editHistory[currentFile].length > 50) {
                     editHistory[currentFile].shift();
                     editHistoryIndex[currentFile]--;
@@ -1038,92 +1093,97 @@ The performance of our system exceeded expectations.`;
 
         // Handle keyboard shortcuts
         function handleKeyboardShortcuts(e) {
-            // Ctrl+S or Cmd+S to save
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
                 saveFile();
             }
 
-            // Ctrl+Enter or Cmd+Enter to compile
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
                 compileProject();
             }
         }
 
-        // Set up resize handle for editor panels
-        function setupResizeHandle() {
-            let isResizing = false;
-
-            resizeHandle.addEventListener('mousedown', function (e) {
-                isResizing = true;
-                document.addEventListener('mousemove', handleResize);
-                document.addEventListener('mouseup', stopResize);
-            });
-
-            function handleResize(e) {
-                if (!isResizing) return;
-
-                const container = document.querySelector('.editor-container');
-                const containerRect = container.getBoundingClientRect();
-                const percentage = (e.clientX - containerRect.left) / containerRect.width;
-
-                document.querySelector('.code-panel').style.flex = percentage;
-                document.querySelector('.preview-panel').style.flex = 1 - percentage;
-            }
-
-            function stopResize() {
-                isResizing = false;
-                document.removeEventListener('mousemove', handleResize);
-                document.removeEventListener('mouseup', stopResize);
-            }
-        }
-
         // Load selected branch
         function loadBranch() {
             statusMessage.textContent = `Loading branch: ${currentBranch}`;
-
-            // Update PDF preview
-            const pdfUrl = `https://dbarros1979.github.io/collab-tex/${currentBranch}/main.pdf`;
-            pdfFrame.src = pdfUrl;
-
-            // In a real implementation, we would fetch the file list from GitHub API
-            simulateFileListLoad();
-
+            updatePDFPreview();
+            fetchFileTree(currentBranch);
             statusMessage.textContent = `Branch loaded: ${currentBranch}`;
             addToLog(`Switched to branch: ${currentBranch}`, 'info');
         }
 
-        // Simulate loading file list (would use GitHub API in production)
-        function simulateFileListLoad() {
-            statusMessage.textContent = 'File list loaded from repository';
+        // Update PDF preview
+        function updatePDFPreview() {
+            const pdfUrl = `https://${owner}.github.io/${repo}/${currentBranch}/main.pdf`;
+
+            pdfContainer.innerHTML = '';
+
+            const pdfViewer = document.createElement('div');
+            pdfViewer.className = 'pdf-viewer';
+
+            pdfFrame = document.createElement('iframe');
+            pdfFrame.className = 'pdf-frame';
+            pdfFrame.src = pdfUrl;
+            pdfFrame.onload = function () {
+                statusMessage.textContent = 'PDF loaded';
+                applyZoom();
+            };
+            pdfFrame.onerror = function () {
+                showPDFError('PDF not available. Compile your project to generate PDF.');
+            };
+
+            pdfViewer.appendChild(pdfFrame);
+            pdfContainer.appendChild(pdfViewer);
+        }
+
+        // Apply current zoom level to PDF
+        function applyZoom() {
+            if (pdfFrame) {
+                pdfFrame.style.transform = `scale(${currentZoom})`;
+                pdfFrame.style.transformOrigin = 'center top';
+            }
+        }
+
+        // Show PDF error
+        function showPDFError(message) {
+            pdfContainer.innerHTML = '';
+            const pdfError = document.createElement('div');
+            pdfError.className = 'pdf-error';
+            pdfError.innerHTML = `
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>PDF Not Available</h3>
+                <p>${message}</p>
+            `;
+            pdfContainer.appendChild(pdfError);
         }
 
         // Open a file in the editor
         function openFile(fileName) {
-            // Update file list selection
             document.querySelectorAll('.file-item').forEach(item => {
                 item.classList.remove('active');
             });
             document.querySelector(`.file-item[data-file="${fileName}"]`).classList.add('active');
 
-            // Add tab if not already open
             if (!openTabs.includes(fileName)) {
                 openTabs.push(fileName);
                 addTab(fileName);
             }
 
-            // Switch to the tab
             switchToTab(fileName);
         }
 
         // Add a new editor tab
         function addTab(fileName) {
+            const noFileTab = editorTabs.querySelector('.editor-tab:not([data-file])');
+            if (noFileTab) {
+                noFileTab.remove();
+            }
+
             const tab = document.createElement('div');
             tab.className = 'editor-tab';
             tab.setAttribute('data-file', fileName);
 
-            // Extract file icon based on extension
             const icon = getFileIcon(fileName);
             const name = fileName.split('/').pop();
 
@@ -1137,38 +1197,47 @@ The performance of our system exceeded expectations.`;
 
         // Switch to a specific tab
         function switchToTab(fileName) {
-            // Update tab states
             document.querySelectorAll('.editor-tab').forEach(tab => {
                 tab.classList.remove('active');
             });
-            document.querySelector(`.editor-tab[data-file="${fileName}"]`).classList.add('active');
+            const activeTab = document.querySelector(`.editor-tab[data-file="${fileName}"]`);
+            if (activeTab) {
+                activeTab.classList.add('active');
+            }
 
-            // Update current file and load content
             currentFile = fileName;
             currentFileElement.textContent = fileName;
 
-            // Set editor content
-            editor.setValue(fileContents[fileName] || '');
+            if (fileContents[fileName]) {
+                editor.setValue(fileContents[fileName]);
+                editor.setOption('readOnly', false);
+            } else {
+                fetchFileContent(currentBranch, fileName);
+            }
 
-            // Update save status
             updateSaveStatus(true);
             updateUndoRedoButtons();
         }
 
         // Close a tab
         function closeTab(fileName) {
-            // Don't close the last tab
-            if (openTabs.length <= 1) return;
+            if (openTabs.length <= 1) {
+                openTabs = [];
+                editorTabs.innerHTML = '<div class="editor-tab"><i class="fas fa-file"></i> No file open</div>';
+                currentFile = null;
+                currentFileElement.textContent = 'Select a file to edit';
+                editor.setValue('');
+                editor.setOption('readOnly', true);
+                updateUndoRedoButtons();
+                return;
+            }
 
-            // Remove from open tabs
             const tabIndex = openTabs.indexOf(fileName);
             openTabs.splice(tabIndex, 1);
 
-            // Remove tab element
             const tabElement = document.querySelector(`.editor-tab[data-file="${fileName}"]`);
             tabElement.remove();
 
-            // If we're closing the active tab, switch to another one
             if (currentFile === fileName) {
                 const newActiveTab = openTabs[Math.max(0, tabIndex - 1)];
                 switchToTab(newActiveTab);
@@ -1197,9 +1266,6 @@ The performance of our system exceeded expectations.`;
             isCompiling = true;
             compileBtn.classList.add('compiling');
             statusMessage.textContent = 'Compiling...';
-
-            // In a real implementation, this would trigger a GitHub Actions workflow
-            // For now, we simulate the compilation process
             simulateCompilation();
         }
 
@@ -1207,7 +1273,6 @@ The performance of our system exceeded expectations.`;
         function simulateCompilation() {
             addToLog('Starting compilation...', 'info');
 
-            // Simulate compilation steps with delays
             setTimeout(() => {
                 addToLog('Running pdflatex...', 'info');
             }, 500);
@@ -1228,7 +1293,6 @@ The performance of our system exceeded expectations.`;
                 compileBtn.classList.remove('compiling');
                 statusMessage.textContent = 'Compilation complete';
 
-                // Reload PDF after a short delay to ensure it's updated
                 setTimeout(() => {
                     reloadPDF();
                 }, 300);
@@ -1237,17 +1301,19 @@ The performance of our system exceeded expectations.`;
 
         // Reload the PDF preview
         function reloadPDF() {
-            const currentSrc = pdfFrame.src;
-            pdfFrame.src = currentSrc.split('?')[0] + '?t=' + new Date().getTime();
+            updatePDFPreview();
             statusMessage.textContent = 'PDF reloaded';
         }
 
         // Save the current file
         function saveFile() {
-            // In a real implementation, this would commit changes to GitHub
+            if (!currentFile) {
+                statusMessage.textContent = 'No file to save';
+                return;
+            }
+
             statusMessage.textContent = `Saving ${currentFile}...`;
 
-            // Simulate API call delay
             setTimeout(() => {
                 statusMessage.textContent = `Saved: ${currentFile}`;
                 updateSaveStatus(true);
@@ -1257,30 +1323,36 @@ The performance of our system exceeded expectations.`;
 
         // Undo last edit
         function undoEdit() {
-            if (editHistoryIndex[currentFile] > 0) {
-                editHistoryIndex[currentFile]--;
-                const content = editHistory[currentFile][editHistoryIndex[currentFile]];
-                editor.setValue(content);
-                fileContents[currentFile] = content;
-                updateUndoRedoButtons();
-                statusMessage.textContent = 'Undo';
-            }
+            if (!currentFile || editHistoryIndex[currentFile] <= 0) return;
+
+            editHistoryIndex[currentFile]--;
+            const content = editHistory[currentFile][editHistoryIndex[currentFile]];
+            editor.setValue(content);
+            fileContents[currentFile] = content;
+            updateUndoRedoButtons();
+            statusMessage.textContent = 'Undo';
         }
 
         // Redo last undone edit
         function redoEdit() {
-            if (editHistoryIndex[currentFile] < editHistory[currentFile].length - 1) {
-                editHistoryIndex[currentFile]++;
-                const content = editHistory[currentFile][editHistoryIndex[currentFile]];
-                editor.setValue(content);
-                fileContents[currentFile] = content;
-                updateUndoRedoButtons();
-                statusMessage.textContent = 'Redo';
-            }
+            if (!currentFile || editHistoryIndex[currentFile] >= editHistory[currentFile].length - 1) return;
+
+            editHistoryIndex[currentFile]++;
+            const content = editHistory[currentFile][editHistoryIndex[currentFile]];
+            editor.setValue(content);
+            fileContents[currentFile] = content;
+            updateUndoRedoButtons();
+            statusMessage.textContent = 'Redo';
         }
 
         // Update undo/redo button states
         function updateUndoRedoButtons() {
+            if (!currentFile) {
+                undoBtn.disabled = true;
+                redoBtn.disabled = true;
+                return;
+            }
+
             undoBtn.disabled = editHistoryIndex[currentFile] <= 0;
             redoBtn.disabled = editHistoryIndex[currentFile] >= editHistory[currentFile].length - 1;
         }
@@ -1295,37 +1367,46 @@ The performance of our system exceeded expectations.`;
 
         // Zoom out PDF
         function zoomOutPDF() {
-            // In a real implementation, this would adjust the iframe zoom level
-            statusMessage.textContent = 'Zooming out PDF';
+            if (pdfFrame) {
+                currentZoom = Math.max(0.5, currentZoom - 0.1);
+                applyZoom();
+                statusMessage.textContent = `Zoom: ${Math.round(currentZoom * 100)}%`;
+            }
         }
 
         // Zoom in PDF
         function zoomInPDF() {
-            // In a real implementation, this would adjust the iframe zoom level
-            statusMessage.textContent = 'Zooming in PDF';
+            if (pdfFrame) {
+                currentZoom = Math.min(2.0, currentZoom + 0.1);
+                applyZoom();
+                statusMessage.textContent = `Zoom: ${Math.round(currentZoom * 100)}%`;
+            }
         }
 
         // Toggle fullscreen mode for PDF preview
         function toggleFullscreen() {
-            if (pdfFrame.requestFullscreen) {
-                pdfFrame.requestFullscreen();
-            } else if (pdfFrame.webkitRequestFullscreen) {
-                pdfFrame.webkitRequestFullscreen();
+            if (pdfContainer.requestFullscreen) {
+                pdfContainer.requestFullscreen();
+            } else if (pdfContainer.webkitRequestFullscreen) {
+                pdfContainer.webkitRequestFullscreen();
             }
-            // Note: Fullscreen API has limited support for iframes
             statusMessage.textContent = 'Fullscreen mode';
         }
 
         // Download the current PDF
         function downloadPDF() {
-            const pdfUrl = pdfFrame.src;
-            const a = document.createElement('a');
-            a.href = pdfUrl;
-            a.download = `document-${currentBranch}-${new Date().toISOString().split('T')[0]}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            statusMessage.textContent = 'Downloading PDF...';
+            const pdfUrl = `https://${owner}.github.io/${repo}/${currentBranch}/main.pdf`;
+            if (pdfUrl) {
+                const a = document.createElement('a');
+                a.href = pdfUrl;
+                a.download = `document-${currentBranch}-${new Date().toISOString().split('T')[0]}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                statusMessage.textContent = 'Downloading PDF...';
+            } else {
+                statusMessage.textContent = 'No PDF available to download';
+            }
         }
 
         // Toggle compilation log visibility
@@ -1352,9 +1433,11 @@ The performance of our system exceeded expectations.`;
             if (saved) {
                 saveStatus.className = 'fas fa-check';
                 saveStatus.style.color = 'var(--secondary-color)';
+                document.querySelector('.status-item:nth-child(2) span').textContent = 'All changes saved';
             } else {
                 saveStatus.className = 'fas fa-circle';
                 saveStatus.style.color = 'var(--warning-color)';
+                document.querySelector('.status-item:nth-child(2) span').textContent = 'Unsaved changes';
             }
         }
 
@@ -1365,28 +1448,6 @@ The performance of our system exceeded expectations.`;
             } else {
                 connectionStatus.style.color = 'var(--danger-color)';
             }
-        }
-
-        // Load file content into editor
-        function loadFile(fileName) {
-            currentFile = fileName;
-            currentFileElement.textContent = fileName;
-
-            // In a real implementation, this would fetch content from GitHub API
-            if (fileContents[fileName]) {
-                editor.setValue(fileContents[fileName]);
-            } else {
-                const defaultContent = `% File: ${fileName}\n% This file is empty. Start editing!`;
-                editor.setValue(defaultContent);
-                fileContents[fileName] = defaultContent;
-
-                // Initialize edit history for new file
-                editHistory[fileName] = [defaultContent];
-                editHistoryIndex[fileName] = 0;
-            }
-
-            updateUndoRedoButtons();
-            statusMessage.textContent = `Loaded: ${fileName}`;
         }
     </script>
 </body>
