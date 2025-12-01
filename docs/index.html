@@ -6,9 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Collab-Tex - Online LaTeX Editor</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/scroll/simplescrollbars.min.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/latex.js/dist/latex.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/latex.js/dist/latex.min.css">
+
     <style>
         /* CSS Variables for consistent theming */
         :root {
@@ -40,6 +45,7 @@
             font-family: 'Segoe UI', system-ui, sans-serif;
             height: 100vh;
             overflow: hidden;
+            /* Prevents whole page scroll */
             background-color: var(--dark-bg);
             color: var(--text-light);
             display: flex;
@@ -56,6 +62,8 @@
             justify-content: space-between;
             padding: 0 15px;
             z-index: 100;
+            flex-shrink: 0;
+            /* Prevents header from squishing */
         }
 
         .logo {
@@ -177,6 +185,8 @@
             display: flex;
             flex: 1;
             overflow: hidden;
+            /* Contains the scroll areas */
+            height: calc(100vh - var(--header-height) - var(--footer-height));
         }
 
         /* Sidebar styles */
@@ -187,11 +197,16 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            flex-shrink: 0;
         }
 
         .sidebar-section {
             padding: 15px;
             border-bottom: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            max-height: 50%;
+            /* Prevents one section from eating all space */
         }
 
         .sidebar-section h3 {
@@ -201,11 +216,13 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            flex-shrink: 0;
         }
 
         .file-tree {
             flex: 1;
             overflow-y: auto;
+            /* SCROLL FIX: Ensures file list scrolls */
         }
 
         .file-list {
@@ -273,6 +290,7 @@
             background: var(--sidebar-bg);
             border-bottom: 1px solid var(--border-color);
             overflow-x: auto;
+            flex-shrink: 0;
         }
 
         .editor-tab {
@@ -307,6 +325,7 @@
             display: flex;
             flex: 1;
             overflow: hidden;
+            /* Keeps scrollbars inside panels */
         }
 
         .code-panel {
@@ -332,6 +351,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-shrink: 0;
         }
 
         .panel-title {
@@ -345,9 +365,11 @@
         }
 
         /* CodeMirror customization */
+        /* SCROLL FIX: Important change here */
         .CodeMirror {
             flex: 1;
-            height: auto;
+            height: 100%;
+            /* Changed from auto to 100% to force scroll */
             font-family: 'Courier New', monospace;
             font-size: 14px;
             line-height: 1.5;
@@ -355,6 +377,7 @@
 
         .CodeMirror-scroll {
             overflow: auto !important;
+            /* Forces scrollbar */
         }
 
         /* PDF Preview Styles */
@@ -364,16 +387,17 @@
             flex-direction: column;
             background: #f0f0f0;
             overflow: hidden;
+            position: relative;
         }
 
-        .pdf-viewer {
-            flex: 1;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            overflow: auto;
-            background: #525659;
-            padding: 0;
+        /* The iframe will handle its own scrolling internally */
+        .pdf-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: white;
+            transition: transform 0.2s ease;
+            display: block;
         }
 
         .pdf-placeholder {
@@ -392,13 +416,6 @@
             color: var(--border-color);
         }
 
-        .pdf-frame {
-            width: 100%;
-            height: 100%;
-            border: none;
-            background: white;
-        }
-
         .pdf-error {
             flex: 1;
             display: flex;
@@ -409,6 +426,7 @@
             background: var(--sidebar-bg);
             padding: 20px;
             text-align: center;
+            overflow-y: auto;
         }
 
         .pdf-error i {
@@ -427,6 +445,7 @@
             padding: 0 15px;
             font-size: 0.8rem;
             color: var(--text-muted);
+            flex-shrink: 0;
         }
 
         .status-indicators {
@@ -444,9 +463,16 @@
         .compilation-log {
             background: var(--dark-bg);
             border-top: 1px solid var(--border-color);
-            max-height: 150px;
+            height: 150px;
+            /* Fixed height for log */
             overflow-y: auto;
             display: none;
+            position: absolute;
+            /* Overlay over bottom */
+            bottom: var(--footer-height);
+            left: 0;
+            right: 0;
+            z-index: 50;
         }
 
         .log-header {
@@ -456,6 +482,8 @@
             justify-content: space-between;
             align-items: center;
             cursor: pointer;
+            position: sticky;
+            top: 0;
         }
 
         .log-content {
@@ -477,6 +505,10 @@
             color: var(--warning-color);
         }
 
+        .log-info {
+            color: var(--text-light);
+        }
+
         /* Responsive design */
         @media (max-width: 768px) {
             .container {
@@ -486,6 +518,7 @@
             .sidebar {
                 width: 100%;
                 height: 200px;
+                /* Fixed height for sidebar on mobile */
             }
 
             .editor-container {
@@ -558,7 +591,6 @@
 </head>
 
 <body>
-    <!-- Header with controls -->
     <div class="header">
         <div class="logo">
             <i class="fas fa-code"></i>
@@ -585,18 +617,16 @@
                 <i class="fas fa-save"></i> Save
             </button>
             <button class="btn btn-secondary" id="reloadBtn">
-                <i class="fas fa-redo"></i> Reload PDF
+                <i class="fas fa-redo"></i> Refresh View
             </button>
         </div>
     </div>
 
-    <!-- Main container with sidebar and editor -->
     <div class="container">
-        <!-- Sidebar with file tree -->
         <div class="sidebar">
-            <div class="sidebar-section">
+            <div class="sidebar-section" style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
                 <h3><i class="fas fa-project-diagram"></i> Project Files</h3>
-                <div class="file-tree">
+                <div class="file-tree" id="fileTreeContainer">
                     <ul class="file-list" id="fileList">
                         <li class="file-item">
                             <span class="loading"></span> Loading files...
@@ -604,7 +634,7 @@
                     </ul>
                 </div>
             </div>
-            <div class="sidebar-section">
+            <div class="sidebar-section" style="max-height: 150px; overflow-y: auto;">
                 <h3><i class="fas fa-users"></i> Collaborators</h3>
                 <div id="collaboratorsList">
                     <div class="user-item">
@@ -623,7 +653,6 @@
             </div>
         </div>
 
-        <!-- Editor area with tabs and panels -->
         <div class="editor-area">
             <div class="editor-tabs" id="editorTabs">
                 <div class="editor-tab">
@@ -632,7 +661,6 @@
             </div>
 
             <div class="editor-container">
-                <!-- Code editor panel -->
                 <div class="code-panel">
                     <div class="panel-header">
                         <span class="panel-title" id="currentFile">Select a file to edit</span>
@@ -648,13 +676,14 @@
                             </button>
                         </div>
                     </div>
-                    <div id="texEditor"></div>
+                    <div style="flex: 1; overflow: hidden; height: 100%;">
+                        <textarea id="texEditor"></textarea>
+                    </div>
                 </div>
 
-                <!-- PDF preview panel -->
                 <div class="preview-panel">
                     <div class="panel-header">
-                        <span class="panel-title">PDF Preview</span>
+                        <span class="panel-title">Preview</span>
                         <div class="panel-controls">
                             <button class="btn btn-secondary" id="zoomOutBtn" title="Zoom Out">
                                 <i class="fas fa-search-minus"></i>
@@ -665,7 +694,7 @@
                             <button class="btn btn-secondary" id="fullscreenBtn" title="Fullscreen">
                                 <i class="fas fa-expand"></i>
                             </button>
-                            <button class="btn btn-secondary" id="downloadBtn" title="Download PDF">
+                            <button class="btn btn-secondary" id="downloadBtn" title="Download Source" onclick="downloadSource()">
                                 <i class="fas fa-download"></i>
                             </button>
                         </div>
@@ -673,7 +702,7 @@
                     <div class="pdf-container" id="pdfContainer">
                         <div class="pdf-placeholder" id="pdfPlaceholder">
                             <i class="fas fa-file-pdf"></i>
-                            <p>PDF will appear here after compilation</p>
+                            <p>Document preview will appear here after compilation</p>
                         </div>
                     </div>
                 </div>
@@ -681,7 +710,6 @@
         </div>
     </div>
 
-    <!-- Compilation log -->
     <div class="compilation-log" id="compilationLog">
         <div class="log-header">
             <span>Compilation Log</span>
@@ -692,7 +720,6 @@
         <div class="log-content" id="logContent"></div>
     </div>
 
-    <!-- Footer with status information -->
     <div class="footer">
         <div class="status-indicators">
             <div class="status-item">
@@ -709,11 +736,10 @@
             </div>
         </div>
         <div class="status-item">
-            <span id="statusMessage">Loading repository...</span>
+            <span id="statusMessage">Ready</span>
         </div>
     </div>
 
-    <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/stex/stex.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
@@ -776,12 +802,41 @@
             initializeApp();
             setupEventListeners();
             fetchBranches();
+
+            // Allow immediate editing
+            editor.setOption('readOnly', false);
+            editor.setValue(`\\documentclass{article}
+\\usepackage{graphicx}
+\\title{Welcome to Collab-Tex}
+\\author{Your Name}
+\\date{\\today}
+\\begin{document}
+\\maketitle
+\\section{Introduction}
+Start typing your LaTeX here. Click \\textbf{Compile} to see the result.
+
+\\section{Scrolling Test}
+This is a test to ensure scrolling works.
+1. Line 1
+2. Line 2
+3. Line 3
+4. Line 4
+5. Line 5
+6. Line 6
+7. Line 7
+8. Line 8
+9. Line 9
+10. Line 10
+
+\\end{document}`);
+            currentFile = "new_document.tex";
+            currentFileElement.textContent = "new_document.tex (Local)";
         });
 
         // Initialize application state and UI
         function initializeApp() {
             // Initialize CodeMirror editor
-            editor = CodeMirror(texEditor, {
+            editor = CodeMirror.fromTextArea(texEditor, {
                 mode: "stex",
                 theme: "monokai",
                 lineNumbers: true,
@@ -827,7 +882,6 @@
             zoomOutBtn.addEventListener('click', zoomOutPDF);
             zoomInBtn.addEventListener('click', zoomInPDF);
             fullscreenBtn.addEventListener('click', toggleFullscreen);
-            downloadBtn.addEventListener('click', downloadPDF);
             toggleLog.addEventListener('click', toggleCompilationLog);
 
             fileList.addEventListener('click', handleFileClick);
@@ -873,8 +927,8 @@
                 addToLog(`Loaded ${branches.length} branches`, 'info');
             } catch (error) {
                 console.error('Error fetching branches:', error);
-                statusMessage.textContent = 'Error loading branches';
-                addToLog(`Error loading branches: ${error.message}`, 'error');
+                statusMessage.textContent = 'Error loading branches (Offline/Static Mode)';
+                addToLog(`Error loading branches: ${error.message}. Running in local mode.`, 'warning');
             }
         }
 
@@ -922,7 +976,7 @@
                 addToLog(`Error loading file tree: ${error.message}`, 'error');
 
                 const fileList = document.getElementById("fileList");
-                fileList.innerHTML = `<li class="file-item"><i class="fas fa-exclamation-triangle"></i> Error loading files</li>`;
+                fileList.innerHTML = `<li class="file-item"><i class="fas fa-exclamation-triangle"></i> Local Mode (No Files Found)</li>`;
             }
         }
 
@@ -1107,41 +1161,77 @@
         // Load selected branch
         function loadBranch() {
             statusMessage.textContent = `Loading branch: ${currentBranch}`;
-            updatePDFPreview();
             fetchFileTree(currentBranch);
             statusMessage.textContent = `Branch loaded: ${currentBranch}`;
             addToLog(`Switched to branch: ${currentBranch}`, 'info');
         }
 
-        // Update PDF preview
-        function updatePDFPreview() {
-            const pdfUrl = `https://${owner}.github.io/${repo}/${currentBranch}/main.pdf`;
-
+        // Render Latex to Preview Iframe
+        function renderLatexToPreview(sourceCode) {
+            const pdfContainer = document.getElementById('pdfContainer');
             pdfContainer.innerHTML = '';
 
-            const pdfViewer = document.createElement('div');
-            pdfViewer.className = 'pdf-viewer';
+            // Create iframe
+            const iframe = document.createElement('iframe');
+            iframe.className = 'pdf-frame';
+            // Note: scrolling handled inside iframe body style below
 
-            pdfFrame = document.createElement('iframe');
-            pdfFrame.className = 'pdf-frame';
-            pdfFrame.src = pdfUrl;
-            pdfFrame.onload = function () {
-                statusMessage.textContent = 'PDF loaded';
+            pdfContainer.appendChild(iframe);
+            pdfFrame = iframe;
+
+            const generator = new latexjs.HtmlGenerator({ hyphenate: false });
+
+            try {
+                const doc = latexjs.parse(sourceCode, { generator: generator });
+
+                // SCROLL FIX: Added overflow-y: auto to body inside iframe
+                const head = `
+                    <head>
+                        <meta charset="UTF-8">
+                        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/latex.js/dist/latex.min.css">
+                        <style>
+                            body { 
+                                margin: 40px; 
+                                overflow-y: auto; /* Ensures content scrolls */
+                                background: white;
+                            }
+                        </style>
+                    </head>
+                `;
+
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                iframeDoc.open();
+                iframeDoc.write(head);
+                iframeDoc.write('<body>');
+                iframeDoc.write('</body>');
+                iframeDoc.close();
+
+                iframeDoc.body.appendChild(generator.domFragment());
+
+                addToLog('Compilation successful!', 'success');
+                statusMessage.textContent = 'Compilation complete';
+
                 applyZoom();
-            };
-            pdfFrame.onerror = function () {
-                showPDFError('PDF not available. Compile your project to generate PDF.');
-            };
 
-            pdfViewer.appendChild(pdfFrame);
-            pdfContainer.appendChild(pdfViewer);
+            } catch (e) {
+                console.error(e);
+                addToLog(`Compilation Error: ${e.message}`, 'error');
+                showPDFError(e.message);
+                statusMessage.textContent = 'Compilation failed';
+            }
+        }
+
+        function reloadPDF() {
+            compileProject();
         }
 
         // Apply current zoom level to PDF
         function applyZoom() {
             if (pdfFrame) {
                 pdfFrame.style.transform = `scale(${currentZoom})`;
-                pdfFrame.style.transformOrigin = 'center top';
+                pdfFrame.style.transformOrigin = 'top center';
+                // Note: Zooming via transform might affect scroll area size calculation
+                // For a simple app, this is acceptable, but extreme zooms might require width adj.
             }
         }
 
@@ -1152,7 +1242,7 @@
             pdfError.className = 'pdf-error';
             pdfError.innerHTML = `
                 <i class="fas fa-exclamation-triangle"></i>
-                <h3>PDF Not Available</h3>
+                <h3>Compilation Error</h3>
                 <p>${message}</p>
             `;
             pdfContainer.appendChild(pdfError);
@@ -1266,49 +1356,21 @@
             isCompiling = true;
             compileBtn.classList.add('compiling');
             statusMessage.textContent = 'Compiling...';
-            simulateCompilation();
-        }
-
-        // Simulate the compilation process
-        function simulateCompilation() {
             addToLog('Starting compilation...', 'info');
 
             setTimeout(() => {
-                addToLog('Running pdflatex...', 'info');
-            }, 500);
-
-            setTimeout(() => {
-                addToLog('Running bibtex...', 'info');
-            }, 1000);
-
-            setTimeout(() => {
-                addToLog('Running pdflatex (second pass)...', 'info');
-            }, 1500);
-
-            setTimeout(() => {
-                addToLog('Running pdflatex (final pass)...', 'info');
-                addToLog('Compilation successful!', 'success');
-
+                const source = editor.getValue();
+                renderLatexToPreview(source);
                 isCompiling = false;
                 compileBtn.classList.remove('compiling');
-                statusMessage.textContent = 'Compilation complete';
-
-                setTimeout(() => {
-                    reloadPDF();
-                }, 300);
-            }, 2000);
-        }
-
-        // Reload the PDF preview
-        function reloadPDF() {
-            updatePDFPreview();
-            statusMessage.textContent = 'PDF reloaded';
+            }, 100);
         }
 
         // Save the current file
         function saveFile() {
             if (!currentFile) {
-                statusMessage.textContent = 'No file to save';
+                statusMessage.textContent = 'Saved locally (browser memory only)';
+                updateSaveStatus(true);
                 return;
             }
 
@@ -1319,6 +1381,15 @@
                 updateSaveStatus(true);
                 addToLog(`Saved ${currentFile}`, 'info');
             }, 500);
+        }
+
+        function downloadSource() {
+            const text = editor.getValue();
+            const blob = new Blob([text], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = currentFile || 'document.tex';
+            a.click();
         }
 
         // Undo last edit
@@ -1391,22 +1462,6 @@
                 pdfContainer.webkitRequestFullscreen();
             }
             statusMessage.textContent = 'Fullscreen mode';
-        }
-
-        // Download the current PDF
-        function downloadPDF() {
-            const pdfUrl = `https://${owner}.github.io/${repo}/${currentBranch}/main.pdf`;
-            if (pdfUrl) {
-                const a = document.createElement('a');
-                a.href = pdfUrl;
-                a.download = `document-${currentBranch}-${new Date().toISOString().split('T')[0]}.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                statusMessage.textContent = 'Downloading PDF...';
-            } else {
-                statusMessage.textContent = 'No PDF available to download';
-            }
         }
 
         // Toggle compilation log visibility
