@@ -32,6 +32,7 @@
             --header-height: 50px;
             --sidebar-width: 280px;
             --footer-height: 30px;
+            --resizer-width: 8px;
         }
 
         /* Base styles */
@@ -45,7 +46,6 @@
             font-family: 'Segoe UI', system-ui, sans-serif;
             height: 100vh;
             overflow: hidden;
-            /* Prevents whole page scroll */
             background-color: var(--dark-bg);
             color: var(--text-light);
             display: flex;
@@ -63,7 +63,6 @@
             padding: 0 15px;
             z-index: 100;
             flex-shrink: 0;
-            /* Prevents header from squishing */
         }
 
         .logo {
@@ -144,11 +143,18 @@
             display: flex;
             align-items: center;
             gap: 5px;
-            transition: background 0.2s;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
         }
 
         .btn:hover {
             background: #0d62d0;
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
         }
 
         .btn-secondary {
@@ -178,6 +184,33 @@
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn-compiling {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-compiling::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            animation: compiling-shimmer 1.5s infinite;
+        }
+
+        @keyframes compiling-shimmer {
+            0% {
+                left: -100%;
+            }
+
+            100% {
+                left: 100%;
+            }
         }
 
         /* Main container */
@@ -185,7 +218,6 @@
             display: flex;
             flex: 1;
             overflow: hidden;
-            /* Contains the scroll areas */
             height: calc(100vh - var(--header-height) - var(--footer-height));
         }
 
@@ -198,6 +230,14 @@
             flex-direction: column;
             overflow: hidden;
             flex-shrink: 0;
+            resize: horizontal;
+            min-width: 200px;
+            max-width: 400px;
+            overflow-x: hidden;
+        }
+
+        .sidebar:hover {
+            border-right: 2px solid var(--primary-color);
         }
 
         .sidebar-section {
@@ -206,7 +246,6 @@
             display: flex;
             flex-direction: column;
             max-height: 50%;
-            /* Prevents one section from eating all space */
         }
 
         .sidebar-section h3 {
@@ -222,7 +261,6 @@
         .file-tree {
             flex: 1;
             overflow-y: auto;
-            /* SCROLL FIX: Ensures file list scrolls */
         }
 
         .file-list {
@@ -238,16 +276,18 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            transition: background 0.2s;
+            transition: all 0.2s;
         }
 
         .file-item:hover,
         .folder-item:hover {
             background: var(--hover-color);
+            transform: translateX(2px);
         }
 
         .file-item.active {
             background: var(--primary-color);
+            transform: translateX(0);
         }
 
         .file-item i {
@@ -283,6 +323,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            position: relative;
         }
 
         .editor-tabs {
@@ -301,7 +342,7 @@
             gap: 8px;
             border-right: 1px solid var(--border-color);
             white-space: nowrap;
-            transition: background 0.2s;
+            transition: all 0.2s;
         }
 
         .editor-tab:hover {
@@ -310,22 +351,67 @@
 
         .editor-tab.active {
             background: var(--editor-bg);
+            position: relative;
+        }
+
+        .editor-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--primary-color);
         }
 
         .editor-tab-close {
             margin-left: 5px;
             opacity: 0.7;
+            transition: opacity 0.2s;
         }
 
         .editor-tab-close:hover {
             opacity: 1;
+            transform: scale(1.1);
         }
 
+        /* Editor container with resizable panels */
         .editor-container {
             display: flex;
             flex: 1;
             overflow: hidden;
-            /* Keeps scrollbars inside panels */
+            position: relative;
+        }
+
+        .resizer {
+            width: var(--resizer-width);
+            background: var(--border-color);
+            cursor: col-resize;
+            flex-shrink: 0;
+            transition: background 0.2s;
+            position: relative;
+            z-index: 10;
+        }
+
+        .resizer:hover,
+        .resizer.resizing {
+            background: var(--primary-color);
+        }
+
+        .resizer::before {
+            content: '⋮';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--text-muted);
+            font-size: 10px;
+            opacity: 0.5;
+        }
+
+        .resizer:hover::before {
+            opacity: 1;
+            color: var(--primary-color);
         }
 
         .code-panel {
@@ -333,15 +419,19 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            min-width: 300px;
+            min-width: 200px;
+            max-width: calc(100% - 200px);
+            transition: width 0.3s ease;
         }
 
         .preview-panel {
-            width: 50%;
+            flex: 1;
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            border-left: 1px solid var(--border-color);
+            min-width: 200px;
+            max-width: calc(100% - 200px);
+            transition: width 0.3s ease;
         }
 
         .panel-header {
@@ -361,23 +451,45 @@
 
         .panel-controls {
             display: flex;
-            gap: 10px;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-right: 10px;
+        }
+
+        .zoom-display {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .zoom-btn {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
         }
 
         /* CodeMirror customization */
-        /* SCROLL FIX: Important change here */
         .CodeMirror {
             flex: 1;
             height: 100%;
-            /* Changed from auto to 100% to force scroll */
             font-family: 'Courier New', monospace;
             font-size: 14px;
             line-height: 1.5;
+            transition: font-size 0.3s ease;
         }
 
         .CodeMirror-scroll {
             overflow: auto !important;
-            /* Forces scrollbar */
         }
 
         /* PDF Preview Styles */
@@ -390,7 +502,6 @@
             position: relative;
         }
 
-        /* The iframe will handle its own scrolling internally */
         .pdf-frame {
             width: 100%;
             height: 100%;
@@ -464,11 +575,9 @@
             background: var(--dark-bg);
             border-top: 1px solid var(--border-color);
             height: 150px;
-            /* Fixed height for log */
             overflow-y: auto;
             display: none;
             position: absolute;
-            /* Overlay over bottom */
             bottom: var(--footer-height);
             left: 0;
             right: 0;
@@ -509,6 +618,65 @@
             color: var(--text-light);
         }
 
+        /* Context menu */
+        .context-menu {
+            position: fixed;
+            background: var(--sidebar-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 5px 0;
+            z-index: 1000;
+            display: none;
+            min-width: 150px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .context-menu-item {
+            padding: 8px 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .context-menu-item:hover {
+            background: var(--hover-color);
+        }
+
+        .context-menu-divider {
+            height: 1px;
+            background: var(--border-color);
+            margin: 5px 0;
+        }
+
+        /* Tooltips */
+        [data-tooltip] {
+            position: relative;
+        }
+
+        [data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--dark-bg);
+            color: var(--text-light);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s, visibility 0.2s;
+            z-index: 1000;
+            border: 1px solid var(--border-color);
+            pointer-events: none;
+        }
+
+        [data-tooltip]:hover::after {
+            opacity: 1;
+            visibility: visible;
+        }
+
         /* Responsive design */
         @media (max-width: 768px) {
             .container {
@@ -518,7 +686,10 @@
             .sidebar {
                 width: 100%;
                 height: 200px;
-                /* Fixed height for sidebar on mobile */
+                resize: vertical;
+                max-width: 100%;
+                min-height: 150px;
+                max-height: 300px;
             }
 
             .editor-container {
@@ -527,8 +698,19 @@
 
             .code-panel,
             .preview-panel {
+                width: 100% !important;
+                height: 50% !important;
+                max-width: 100%;
+            }
+
+            .resizer {
                 width: 100%;
-                height: 50%;
+                height: var(--resizer-width);
+                cursor: row-resize;
+            }
+
+            .resizer::before {
+                content: '⋯';
             }
         }
 
@@ -587,6 +769,33 @@
                 transform: rotate(360deg);
             }
         }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background: var(--secondary-color);
+            color: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            transform: translateX(150%);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.error {
+            background: var(--danger-color);
+        }
+
+        .notification.warning {
+            background: var(--warning-color);
+        }
     </style>
 </head>
 
@@ -601,23 +810,26 @@
                 <i class="fas fa-code-branch"></i>
                 <div class="branch-dropdown">
                     <button class="btn btn-secondary" id="branchDropdownBtn">
-                        <span id="currentBranchDisplay">Loading...</span> <i class="fas fa-caret-down"></i>
+                        <span id="currentBranchDisplay">main</span> <i class="fas fa-caret-down"></i>
                     </button>
                     <div class="branch-dropdown-content" id="branchDropdown">
-                        <div class="branch-item">
-                            <span class="loading"></span> Loading branches...
+                        <div class="branch-item" data-branch="main">
+                            <span>main</span> <i class="fas fa-check"></i>
+                        </div>
+                        <div class="branch-item" data-branch="develop">
+                            <span>develop</span>
                         </div>
                     </div>
                 </div>
             </div>
-            <button class="btn" id="compileBtn">
-                <i class="fas fa-play"></i> Compile
+            <button class="btn" id="compileBtn" data-tooltip="Compile LaTeX (Ctrl+Enter)">
+                <i class="fas fa-play"></i> <span id="compileText">Compile</span>
             </button>
-            <button class="btn btn-success" id="saveBtn">
+            <button class="btn btn-success" id="saveBtn" data-tooltip="Save document (Ctrl+S)">
                 <i class="fas fa-save"></i> Save
             </button>
-            <button class="btn btn-secondary" id="reloadBtn">
-                <i class="fas fa-redo"></i> Refresh View
+            <button class="btn btn-secondary" id="reloadBtn" data-tooltip="Refresh PDF preview">
+                <i class="fas fa-redo"></i> Refresh
             </button>
         </div>
     </div>
@@ -628,9 +840,20 @@
                 <h3><i class="fas fa-project-diagram"></i> Project Files</h3>
                 <div class="file-tree" id="fileTreeContainer">
                     <ul class="file-list" id="fileList">
-                        <li class="file-item">
-                            <span class="loading"></span> Loading files...
+                        <li class="file-item active" data-file="main.tex">
+                            <i class="fas fa-file-code"></i> main.tex
                         </li>
+                        <li class="file-item" data-file="references.bib">
+                            <i class="fas fa-file-alt"></i> references.bib
+                        </li>
+                        <li class="folder-item">
+                            <i class="fas fa-folder"></i> images
+                        </li>
+                        <div class="folder-contents">
+                            <li class="file-item" data-file="images/diagram.png">
+                                <i class="fas fa-file-image"></i> diagram.png
+                            </li>
+                        </div>
                     </ul>
                 </div>
             </div>
@@ -655,23 +878,33 @@
 
         <div class="editor-area">
             <div class="editor-tabs" id="editorTabs">
-                <div class="editor-tab">
-                    <i class="fas fa-file"></i> No file open
+                <div class="editor-tab active" data-file="main.tex">
+                    <i class="fas fa-file-code"></i> main.tex
+                    <span class="editor-tab-close"><i class="fas fa-times"></i></span>
                 </div>
             </div>
 
             <div class="editor-container">
-                <div class="code-panel">
+                <div class="code-panel" id="codePanel">
                     <div class="panel-header">
-                        <span class="panel-title" id="currentFile">Select a file to edit</span>
+                        <span class="panel-title" id="currentFile">main.tex</span>
                         <div class="panel-controls">
-                            <button class="btn btn-secondary" id="undoBtn" title="Undo" disabled>
+                            <div class="zoom-controls">
+                                <button class="btn btn-secondary zoom-btn" id="fontSmallerBtn" data-tooltip="Decrease font size">
+                                    <i class="fas fa-font"></i><i class="fas fa-minus" style="font-size: 8px;"></i>
+                                </button>
+                                <span class="zoom-display" id="fontSizeDisplay">14px</span>
+                                <button class="btn btn-secondary zoom-btn" id="fontLargerBtn" data-tooltip="Increase font size">
+                                    <i class="fas fa-font"></i><i class="fas fa-plus" style="font-size: 8px;"></i>
+                                </button>
+                            </div>
+                            <button class="btn btn-secondary" id="undoBtn" title="Undo (Ctrl+Z)" data-tooltip="Undo (Ctrl+Z)" disabled>
                                 <i class="fas fa-undo"></i>
                             </button>
-                            <button class="btn btn-secondary" id="redoBtn" title="Redo" disabled>
+                            <button class="btn btn-secondary" id="redoBtn" title="Redo (Ctrl+Y)" data-tooltip="Redo (Ctrl+Y)" disabled>
                                 <i class="fas fa-redo"></i>
                             </button>
-                            <button class="btn btn-secondary" id="wordCountBtn" title="Word Count">
+                            <button class="btn btn-secondary" id="wordCountBtn" data-tooltip="Word count">
                                 <i class="fas fa-font"></i>
                             </button>
                         </div>
@@ -681,20 +914,28 @@
                     </div>
                 </div>
 
-                <div class="preview-panel">
+                <div class="resizer" id="resizer"></div>
+
+                <div class="preview-panel" id="previewPanel">
                     <div class="panel-header">
                         <span class="panel-title">Preview</span>
                         <div class="panel-controls">
-                            <button class="btn btn-secondary" id="zoomOutBtn" title="Zoom Out">
-                                <i class="fas fa-search-minus"></i>
-                            </button>
-                            <button class="btn btn-secondary" id="zoomInBtn" title="Zoom In">
-                                <i class="fas fa-search-plus"></i>
-                            </button>
-                            <button class="btn btn-secondary" id="fullscreenBtn" title="Fullscreen">
+                            <div class="zoom-controls">
+                                <button class="btn btn-secondary zoom-btn" id="zoomOutBtn" data-tooltip="Zoom Out PDF">
+                                    <i class="fas fa-search-minus"></i>
+                                </button>
+                                <span class="zoom-display" id="zoomDisplay">100%</span>
+                                <button class="btn btn-secondary zoom-btn" id="zoomResetBtn" data-tooltip="Reset Zoom">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                                <button class="btn btn-secondary zoom-btn" id="zoomInBtn" data-tooltip="Zoom In PDF">
+                                    <i class="fas fa-search-plus"></i>
+                                </button>
+                            </div>
+                            <button class="btn btn-secondary" id="fullscreenBtn" data-tooltip="Fullscreen preview">
                                 <i class="fas fa-expand"></i>
                             </button>
-                            <button class="btn btn-secondary" id="downloadBtn" title="Download Source" onclick="downloadSource()">
+                            <button class="btn btn-secondary" id="downloadBtn" data-tooltip="Download PDF">
                                 <i class="fas fa-download"></i>
                             </button>
                         </div>
@@ -728,7 +969,7 @@
             </div>
             <div class="status-item">
                 <i class="fas fa-save" id="saveStatus"></i>
-                <span>No changes</span>
+                <span id="saveStatusText">No changes</span>
             </div>
             <div class="status-item">
                 <i class="fas fa-code" id="latexStatus"></i>
@@ -739,6 +980,10 @@
             <span id="statusMessage">Ready</span>
         </div>
     </div>
+
+    <div class="notification" id="notification"></div>
+
+    <div class="context-menu" id="contextMenu"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/stex/stex.min.js"></script>
@@ -752,15 +997,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/comment-fold.min.js"></script>
 
     <script>
-        // GitHub repository configuration
-        const owner = "dbarros1979";
-        const repo = "collab-tex";
-
         // Application state
         let currentBranch = 'main';
-        let currentFile = null;
+        let currentFile = 'main.tex';
         let fileContents = {};
-        let openTabs = [];
+        let openTabs = ['main.tex'];
         let isCompiling = false;
         let isLoggedIn = false;
         let editor;
@@ -768,6 +1009,11 @@
         let editHistoryIndex = {};
         let pdfFrame = null;
         let currentZoom = 1.0;
+        let editorFontSize = 14;
+        let isResizing = false;
+        let lastDownX = 0;
+        let codePanelWidth = 50; // percentage
+        let previewPanelWidth = 50; // percentage
 
         // DOM elements
         const branchDropdownBtn = document.getElementById('branchDropdownBtn');
@@ -780,6 +1026,7 @@
         const pdfPlaceholder = document.getElementById('pdfPlaceholder');
         const currentFileElement = document.getElementById('currentFile');
         const compileBtn = document.getElementById('compileBtn');
+        const compileText = document.getElementById('compileText');
         const reloadBtn = document.getElementById('reloadBtn');
         const saveBtn = document.getElementById('saveBtn');
         const undoBtn = document.getElementById('undoBtn');
@@ -787,6 +1034,11 @@
         const wordCountBtn = document.getElementById('wordCountBtn');
         const zoomOutBtn = document.getElementById('zoomOutBtn');
         const zoomInBtn = document.getElementById('zoomInBtn');
+        const zoomResetBtn = document.getElementById('zoomResetBtn');
+        const zoomDisplay = document.getElementById('zoomDisplay');
+        const fontSmallerBtn = document.getElementById('fontSmallerBtn');
+        const fontLargerBtn = document.getElementById('fontLargerBtn');
+        const fontSizeDisplay = document.getElementById('fontSizeDisplay');
         const fullscreenBtn = document.getElementById('fullscreenBtn');
         const downloadBtn = document.getElementById('downloadBtn');
         const toggleLog = document.getElementById('toggleLog');
@@ -795,42 +1047,19 @@
         const statusMessage = document.getElementById('statusMessage');
         const connectionStatus = document.getElementById('connectionStatus');
         const saveStatus = document.getElementById('saveStatus');
+        const saveStatusText = document.getElementById('saveStatusText');
         const latexStatus = document.getElementById('latexStatus');
+        const notification = document.getElementById('notification');
+        const resizer = document.getElementById('resizer');
+        const codePanel = document.getElementById('codePanel');
+        const previewPanel = document.getElementById('previewPanel');
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function () {
             initializeApp();
             setupEventListeners();
-            fetchBranches();
-
-            // Allow immediate editing
-            editor.setOption('readOnly', false);
-            editor.setValue(`\\documentclass{article}
-\\usepackage{graphicx}
-\\title{Welcome to Collab-Tex}
-\\author{Your Name}
-\\date{\\today}
-\\begin{document}
-\\maketitle
-\\section{Introduction}
-Start typing your LaTeX here. Click \\textbf{Compile} to see the result.
-
-\\section{Scrolling Test}
-This is a test to ensure scrolling works.
-1. Line 1
-2. Line 2
-3. Line 3
-4. Line 4
-5. Line 5
-6. Line 6
-7. Line 7
-8. Line 8
-9. Line 9
-10. Line 10
-
-\\end{document}`);
-            currentFile = "new_document.tex";
-            currentFileElement.textContent = "new_document.tex (Local)";
+            setupResizablePanels();
+            showNotification('Welcome to Collab-Tex!', 'info');
         });
 
         // Initialize application state and UI
@@ -847,7 +1076,6 @@ This is a test to ensure scrolling works.
                 scrollbarStyle: "simple",
                 foldGutter: true,
                 gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
-                readOnly: true,
                 extraKeys: {
                     "Ctrl-S": saveFile,
                     "Cmd-S": saveFile,
@@ -864,8 +1092,55 @@ This is a test to ensure scrolling works.
                 }
             });
 
+            // Set initial content
+            const initialContent = `\\documentclass{article}
+\\usepackage{graphicx}
+\\usepackage{amsmath}
+\\title{Welcome to Collab-Tex}
+\\author{Your Name}
+\\date{\\today}
+
+\\begin{document}
+\\maketitle
+
+\\section{Introduction}
+Collab-Tex is an online LaTeX editor with real-time collaboration features. 
+Start typing your LaTeX here and click the \\textbf{Compile} button to see the result.
+
+\\subsection{Features}
+\\begin{itemize}
+    \\item Real-time collaboration
+    \\item Live preview
+    \\item Multiple file support
+    \\item Version control integration
+\\end{itemize}
+
+\\section{Mathematical Examples}
+Here's an example of mathematical typesetting:
+
+\\begin{equation}
+    E = mc^2
+\\end{equation}
+
+And the quadratic formula:
+\\[
+    x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}
+\\]
+
+\\section{Resize and Zoom Test}
+Try resizing the panels by dragging the separator between the editor and preview.
+Use the zoom controls to adjust the PDF preview size.
+
+\\end{document}`;
+
+            editor.setValue(initialContent);
+            fileContents['main.tex'] = initialContent;
+            editHistory['main.tex'] = [initialContent];
+            editHistoryIndex['main.tex'] = 0;
+
             updateSaveStatus(true);
             updateConnectionStatus(true);
+            updateFontSizeDisplay();
         }
 
         // Set up all event listeners
@@ -881,215 +1156,328 @@ This is a test to ensure scrolling works.
             wordCountBtn.addEventListener('click', showWordCount);
             zoomOutBtn.addEventListener('click', zoomOutPDF);
             zoomInBtn.addEventListener('click', zoomInPDF);
+            zoomResetBtn.addEventListener('click', resetZoomPDF);
+            fontSmallerBtn.addEventListener('click', decreaseFontSize);
+            fontLargerBtn.addEventListener('click', increaseFontSize);
             fullscreenBtn.addEventListener('click', toggleFullscreen);
+            downloadBtn.addEventListener('click', downloadPDF);
             toggleLog.addEventListener('click', toggleCompilationLog);
 
             fileList.addEventListener('click', handleFileClick);
             editorTabs.addEventListener('click', handleTabClick);
             editor.on('change', handleEditorChange);
             document.addEventListener('keydown', handleKeyboardShortcuts);
-        }
 
-        // Load branches dynamically
-        async function fetchBranches() {
-            try {
-                statusMessage.textContent = 'Loading branches...';
-                const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/branches`);
-
-                if (!res.ok) {
-                    throw new Error(`Failed to fetch branches: ${res.status} ${res.statusText}`);
-                }
-
-                const branches = await res.json();
-
-                const branchDropdown = document.getElementById("branchDropdown");
-                branchDropdown.innerHTML = "";
-
-                branches.forEach(branch => {
-                    const item = document.createElement("div");
-                    item.className = "branch-item";
-                    if (branch.name === currentBranch) {
-                        item.classList.add("active");
-                    }
-                    item.dataset.branch = branch.name;
-                    item.innerHTML = `<span>${branch.name}</span>`;
-                    if (branch.name === currentBranch) {
-                        item.innerHTML += '<i class="fas fa-check"></i>';
-                    }
-                    item.onclick = () => switchBranch(branch.name);
-                    branchDropdown.appendChild(item);
-                });
-
-                currentBranchDisplay.textContent = currentBranch;
-                fetchFileTree(currentBranch);
-
-                statusMessage.textContent = 'Branches loaded';
-                addToLog(`Loaded ${branches.length} branches`, 'info');
-            } catch (error) {
-                console.error('Error fetching branches:', error);
-                statusMessage.textContent = 'Error loading branches (Offline/Static Mode)';
-                addToLog(`Error loading branches: ${error.message}. Running in local mode.`, 'warning');
-            }
-        }
-
-        // Load file tree dynamically
-        async function fetchFileTree(branch) {
-            try {
-                statusMessage.textContent = 'Loading files...';
-                const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`);
-
-                if (!res.ok) {
-                    throw new Error(`Failed to fetch file tree: ${res.status} ${res.statusText}`);
-                }
-
-                const data = await res.json();
-                const fileList = document.getElementById("fileList");
-                fileList.innerHTML = "";
-
-                const fileTree = {};
-
-                data.tree
-                    .filter(item => item.type === "blob")
-                    .forEach(file => {
-                        const pathParts = file.path.split('/');
-                        let currentLevel = fileTree;
-
-                        for (let i = 0; i < pathParts.length - 1; i++) {
-                            const part = pathParts[i];
-                            if (!currentLevel[part]) {
-                                currentLevel[part] = {};
-                            }
-                            currentLevel = currentLevel[part];
-                        }
-
-                        const fileName = pathParts[pathParts.length - 1];
-                        currentLevel[fileName] = file;
-                    });
-
-                renderFileTree(fileTree, fileList);
-
-                statusMessage.textContent = 'Files loaded';
-                addToLog(`Loaded file tree for branch: ${branch}`, 'info');
-            } catch (error) {
-                console.error('Error fetching file tree:', error);
-                statusMessage.textContent = 'Error loading files';
-                addToLog(`Error loading file tree: ${error.message}`, 'error');
-
-                const fileList = document.getElementById("fileList");
-                fileList.innerHTML = `<li class="file-item"><i class="fas fa-exclamation-triangle"></i> Local Mode (No Files Found)</li>`;
-            }
-        }
-
-        // Recursively render file tree
-        function renderFileTree(tree, container, path = '') {
-            for (const key in tree) {
-                if (typeof tree[key] === 'object' && tree[key].path === undefined) {
-                    const folderItem = document.createElement('li');
-                    folderItem.className = 'folder-item';
-                    folderItem.innerHTML = `<i class="fas fa-folder"></i> ${key}`;
-                    container.appendChild(folderItem);
-
-                    const folderContents = document.createElement('div');
-                    folderContents.className = 'folder-contents';
-                    container.appendChild(folderContents);
-
-                    folderItem.addEventListener('click', function (e) {
-                        e.stopPropagation();
-                        this.classList.toggle('expanded');
-                    });
-
-                    renderFileTree(tree[key], folderContents, path + key + '/');
-                } else {
-                    const file = tree[key];
-                    const li = document.createElement('li');
-                    li.className = 'file-item';
-                    li.dataset.file = file.path;
-                    li.innerHTML = `${getFileIcon(file.path)} ${key}`;
-                    li.onclick = () => openFile(file.path);
-                    container.appendChild(li);
-                }
-            }
-        }
-
-        // Load file content dynamically
-        async function fetchFileContent(branch, path) {
-            try {
-                statusMessage.textContent = `Loading ${path}...`;
-                const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`);
-
-                if (!res.ok) {
-                    throw new Error(`Failed to fetch file content: ${res.status} ${res.statusText}`);
-                }
-
-                const data = await res.json();
-                const content = atob(data.content);
-                fileContents[path] = content;
-
-                if (!editHistory[path]) {
-                    editHistory[path] = [content];
-                    editHistoryIndex[path] = 0;
-                }
-
-                editor.setValue(content);
-                editor.setOption('readOnly', false);
-
-                statusMessage.textContent = `Loaded: ${path}`;
-                addToLog(`Loaded file: ${path}`, 'info');
-
-                return content;
-            } catch (error) {
-                console.error('Error fetching file content:', error);
-                statusMessage.textContent = `Error loading ${path}`;
-                addToLog(`Error loading file: ${error.message}`, 'error');
-
-                editor.setValue(`% Error loading file: ${path}\n% ${error.message}`);
-                editor.setOption('readOnly', true);
-            }
-        }
-
-        // Toggle branch dropdown
-        function toggleBranchDropdown(e) {
-            e.stopPropagation();
-            branchDropdown.classList.toggle('show');
-        }
-
-        // Close branch dropdown when clicking outside
-        function closeBranchDropdown(e) {
-            if (!branchDropdown.contains(e.target) && e.target !== branchDropdownBtn) {
-                branchDropdown.classList.remove('show');
-            }
-        }
-
-        // Switch to a different branch
-        function switchBranch(branchName) {
+            // Branch switching
             document.querySelectorAll('.branch-item').forEach(item => {
-                item.classList.remove('active');
-                const icon = item.querySelector('i.fa-check');
-                if (icon) icon.remove();
+                item.addEventListener('click', () => {
+                    const branch = item.dataset.branch;
+                    switchBranch(branch);
+                });
+            });
+        }
+
+        // Setup resizable panels
+        function setupResizablePanels() {
+            resizer.addEventListener('mousedown', function (e) {
+                isResizing = true;
+                lastDownX = e.clientX;
+                resizer.classList.add('resizing');
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+
+                document.addEventListener('mousemove', handleMouseMove);
+                document.addEventListener('mouseup', handleMouseUp);
             });
 
-            const activeItem = document.querySelector(`.branch-item[data-branch="${branchName}"]`);
-            if (activeItem) {
-                activeItem.classList.add('active');
-                activeItem.innerHTML += '<i class="fas fa-check"></i>';
-            }
+            // Touch support for mobile
+            resizer.addEventListener('touchstart', function (e) {
+                isResizing = true;
+                lastDownX = e.touches[0].clientX;
+                resizer.classList.add('resizing');
+                document.body.style.userSelect = 'none';
 
-            currentBranch = branchName;
-            currentBranchDisplay.textContent = branchName;
-            branchDropdown.classList.remove('show');
-
-            currentFile = null;
-            currentFileElement.textContent = 'Select a file to edit';
-            editor.setValue('');
-            editor.setOption('readOnly', true);
-
-            openTabs = [];
-            editorTabs.innerHTML = '<div class="editor-tab"><i class="fas fa-file"></i> No file open</div>';
-
-            loadBranch();
+                document.addEventListener('touchmove', handleTouchMove);
+                document.addEventListener('touchend', handleTouchEnd);
+            });
         }
 
-        // Handle file clicks in the sidebar
+        function handleMouseMove(e) {
+            if (!isResizing) return;
+
+            const containerWidth = document.querySelector('.editor-container').offsetWidth;
+            const deltaX = e.clientX - lastDownX;
+            const deltaPercent = (deltaX / containerWidth) * 100;
+
+            codePanelWidth = Math.max(20, Math.min(80, codePanelWidth + deltaPercent));
+            previewPanelWidth = 100 - codePanelWidth;
+
+            updatePanelSizes();
+            lastDownX = e.clientX;
+        }
+
+        function handleMouseUp() {
+            if (!isResizing) return;
+
+            isResizing = false;
+            resizer.classList.remove('resizing');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        }
+
+        function handleTouchMove(e) {
+            if (!isResizing || !e.touches[0]) return;
+
+            const containerWidth = document.querySelector('.editor-container').offsetWidth;
+            const deltaX = e.touches[0].clientX - lastDownX;
+            const deltaPercent = (deltaX / containerWidth) * 100;
+
+            codePanelWidth = Math.max(20, Math.min(80, codePanelWidth + deltaPercent));
+            previewPanelWidth = 100 - codePanelWidth;
+
+            updatePanelSizes();
+            lastDownX = e.touches[0].clientX;
+        }
+
+        function handleTouchEnd() {
+            if (!isResizing) return;
+
+            isResizing = false;
+            resizer.classList.remove('resizing');
+            document.body.style.userSelect = '';
+
+            document.removeEventListener('touchmove', handleTouchMove);
+            document.removeEventListener('touchend', handleTouchEnd);
+        }
+
+        function updatePanelSizes() {
+            codePanel.style.width = `${codePanelWidth}%`;
+            previewPanel.style.width = `${previewPanelWidth}%`;
+        }
+
+        // Compile LaTeX project
+        async function compileProject() {
+            if (isCompiling) return;
+
+            isCompiling = true;
+            compileBtn.classList.add('btn-compiling');
+            compileText.textContent = 'Compiling...';
+            compileBtn.disabled = true;
+
+            statusMessage.textContent = 'Compiling LaTeX...';
+            addToLog('Starting compilation...', 'info');
+
+            try {
+                const source = editor.getValue();
+
+                // Show compilation in progress
+                pdfContainer.innerHTML = `
+                    <div class="pdf-placeholder">
+                        <div class="loading" style="width: 40px; height: 40px; margin-bottom: 15px;"></div>
+                        <p>Compiling LaTeX document...</p>
+                    </div>
+                `;
+
+                // Simulate compilation delay
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // Render LaTeX
+                await renderLatexToPreview(source);
+
+                showNotification('Compilation successful!', 'success');
+                statusMessage.textContent = 'Compilation complete';
+                addToLog('Compilation successful!', 'success');
+
+            } catch (error) {
+                console.error('Compilation error:', error);
+                showPDFError(error.message);
+                showNotification(`Compilation failed: ${error.message}`, 'error');
+                statusMessage.textContent = 'Compilation failed';
+                addToLog(`Compilation error: ${error.message}`, 'error');
+            } finally {
+                isCompiling = false;
+                compileBtn.classList.remove('btn-compiling');
+                compileText.textContent = 'Compile';
+                compileBtn.disabled = false;
+            }
+        }
+
+        // Render Latex to Preview
+        async function renderLatexToPreview(sourceCode) {
+            pdfContainer.innerHTML = '';
+
+            // Create iframe
+            const iframe = document.createElement('iframe');
+            iframe.className = 'pdf-frame';
+            iframe.id = 'pdfFrame';
+
+            pdfContainer.appendChild(iframe);
+            pdfFrame = iframe;
+
+            try {
+                const generator = new latexjs.HtmlGenerator({ hyphenate: false });
+                const doc = latexjs.parse(sourceCode, { generator: generator });
+
+                const head = `
+                    <head>
+                        <meta charset="UTF-8">
+                        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/latex.js/dist/latex.min.css">
+                        <style>
+                            body { 
+                                margin: 40px; 
+                                overflow-y: auto;
+                                background: white;
+                                font-family: "Latin Modern", serif;
+                            }
+                            @page { margin: 0; }
+                        </style>
+                    </head>
+                `;
+
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                iframeDoc.open();
+                iframeDoc.write(head);
+                iframeDoc.write('<body>');
+                iframeDoc.write('</body>');
+                iframeDoc.close();
+
+                iframeDoc.body.appendChild(generator.domFragment());
+                applyZoom();
+
+            } catch (e) {
+                throw new Error(e.message);
+            }
+        }
+
+        // Zoom controls
+        function zoomOutPDF() {
+            currentZoom = Math.max(0.25, currentZoom - 0.1);
+            applyZoom();
+            updateZoomDisplay();
+        }
+
+        function zoomInPDF() {
+            currentZoom = Math.min(3.0, currentZoom + 0.1);
+            applyZoom();
+            updateZoomDisplay();
+        }
+
+        function resetZoomPDF() {
+            currentZoom = 1.0;
+            applyZoom();
+            updateZoomDisplay();
+        }
+
+        function applyZoom() {
+            if (pdfFrame) {
+                pdfFrame.style.transform = `scale(${currentZoom})`;
+                pdfFrame.style.transformOrigin = 'top center';
+                pdfFrame.style.width = `${100 / currentZoom}%`;
+                pdfFrame.style.height = `${100 / currentZoom}%`;
+            }
+        }
+
+        function updateZoomDisplay() {
+            zoomDisplay.textContent = `${Math.round(currentZoom * 100)}%`;
+        }
+
+        // Editor font size controls
+        function decreaseFontSize() {
+            editorFontSize = Math.max(10, editorFontSize - 1);
+            editor.getWrapperElement().style.fontSize = `${editorFontSize}px`;
+            editor.refresh();
+            updateFontSizeDisplay();
+        }
+
+        function increaseFontSize() {
+            editorFontSize = Math.min(24, editorFontSize + 1);
+            editor.getWrapperElement().style.fontSize = `${editorFontSize}px`;
+            editor.refresh();
+            updateFontSizeDisplay();
+        }
+
+        function updateFontSizeDisplay() {
+            fontSizeDisplay.textContent = `${editorFontSize}px`;
+        }
+
+        // File management
+        function openFile(fileName) {
+            document.querySelectorAll('.file-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelector(`.file-item[data-file="${fileName}"]`).classList.add('active');
+
+            if (!openTabs.includes(fileName)) {
+                openTabs.push(fileName);
+                addTab(fileName);
+            }
+
+            switchToTab(fileName);
+        }
+
+        function addTab(fileName) {
+            const tab = document.createElement('div');
+            tab.className = 'editor-tab';
+            tab.setAttribute('data-file', fileName);
+
+            const icon = getFileIcon(fileName);
+            const name = fileName.split('/').pop();
+
+            tab.innerHTML = `
+                ${icon} ${name}
+                <span class="editor-tab-close"><i class="fas fa-times"></i></span>
+            `;
+
+            editorTabs.appendChild(tab);
+            editorTabs.querySelector('.editor-tab.active')?.classList.remove('active');
+            tab.classList.add('active');
+        }
+
+        function switchToTab(fileName) {
+            document.querySelectorAll('.editor-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            const activeTab = document.querySelector(`.editor-tab[data-file="${fileName}"]`);
+            if (activeTab) {
+                activeTab.classList.add('active');
+            }
+
+            currentFile = fileName;
+            currentFileElement.textContent = fileName;
+
+            if (fileContents[fileName]) {
+                editor.setValue(fileContents[fileName]);
+            } else {
+                // For new files, create empty content
+                fileContents[fileName] = '';
+                editHistory[fileName] = [''];
+                editHistoryIndex[fileName] = 0;
+                editor.setValue('');
+            }
+
+            updateSaveStatus(true);
+            updateUndoRedoButtons();
+        }
+
+        function closeTab(fileName) {
+            if (openTabs.length <= 1) return;
+
+            const tabIndex = openTabs.indexOf(fileName);
+            openTabs.splice(tabIndex, 1);
+
+            const tabElement = document.querySelector(`.editor-tab[data-file="${fileName}"]`);
+            tabElement.remove();
+
+            if (currentFile === fileName) {
+                const newActiveTab = openTabs[Math.max(0, tabIndex - 1)];
+                switchToTab(newActiveTab);
+            }
+        }
+
+        // Event handlers
         function handleFileClick(e) {
             const fileItem = e.target.closest('.file-item');
             const folderItem = e.target.closest('.folder-item');
@@ -1102,7 +1490,6 @@ This is a test to ensure scrolling works.
             }
         }
 
-        // Handle tab clicks in the editor area
         function handleTabClick(e) {
             const tab = e.target.closest('.editor-tab');
             const closeBtn = e.target.closest('.editor-tab-close');
@@ -1111,6 +1498,7 @@ This is a test to ensure scrolling works.
                 const fileName = tab.getAttribute('data-file');
                 if (fileName) {
                     closeTab(fileName);
+                    e.stopPropagation();
                 }
             } else if (tab) {
                 const fileName = tab.getAttribute('data-file');
@@ -1120,7 +1508,6 @@ This is a test to ensure scrolling works.
             }
         }
 
-        // Handle editor input changes
         function handleEditorChange() {
             if (!currentFile) return;
 
@@ -1145,7 +1532,6 @@ This is a test to ensure scrolling works.
             updateUndoRedoButtons();
         }
 
-        // Handle keyboard shortcuts
         function handleKeyboardShortcuts(e) {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
@@ -1158,183 +1544,7 @@ This is a test to ensure scrolling works.
             }
         }
 
-        // Load selected branch
-        function loadBranch() {
-            statusMessage.textContent = `Loading branch: ${currentBranch}`;
-            fetchFileTree(currentBranch);
-            statusMessage.textContent = `Branch loaded: ${currentBranch}`;
-            addToLog(`Switched to branch: ${currentBranch}`, 'info');
-        }
-
-        // Render Latex to Preview Iframe
-        function renderLatexToPreview(sourceCode) {
-            const pdfContainer = document.getElementById('pdfContainer');
-            pdfContainer.innerHTML = '';
-
-            // Create iframe
-            const iframe = document.createElement('iframe');
-            iframe.className = 'pdf-frame';
-            // Note: scrolling handled inside iframe body style below
-
-            pdfContainer.appendChild(iframe);
-            pdfFrame = iframe;
-
-            const generator = new latexjs.HtmlGenerator({ hyphenate: false });
-
-            try {
-                const doc = latexjs.parse(sourceCode, { generator: generator });
-
-                // SCROLL FIX: Added overflow-y: auto to body inside iframe
-                const head = `
-                    <head>
-                        <meta charset="UTF-8">
-                        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/latex.js/dist/latex.min.css">
-                        <style>
-                            body { 
-                                margin: 40px; 
-                                overflow-y: auto; /* Ensures content scrolls */
-                                background: white;
-                            }
-                        </style>
-                    </head>
-                `;
-
-                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                iframeDoc.open();
-                iframeDoc.write(head);
-                iframeDoc.write('<body>');
-                iframeDoc.write('</body>');
-                iframeDoc.close();
-
-                iframeDoc.body.appendChild(generator.domFragment());
-
-                addToLog('Compilation successful!', 'success');
-                statusMessage.textContent = 'Compilation complete';
-
-                applyZoom();
-
-            } catch (e) {
-                console.error(e);
-                addToLog(`Compilation Error: ${e.message}`, 'error');
-                showPDFError(e.message);
-                statusMessage.textContent = 'Compilation failed';
-            }
-        }
-
-        function reloadPDF() {
-            compileProject();
-        }
-
-        // Apply current zoom level to PDF
-        function applyZoom() {
-            if (pdfFrame) {
-                pdfFrame.style.transform = `scale(${currentZoom})`;
-                pdfFrame.style.transformOrigin = 'top center';
-                // Note: Zooming via transform might affect scroll area size calculation
-                // For a simple app, this is acceptable, but extreme zooms might require width adj.
-            }
-        }
-
-        // Show PDF error
-        function showPDFError(message) {
-            pdfContainer.innerHTML = '';
-            const pdfError = document.createElement('div');
-            pdfError.className = 'pdf-error';
-            pdfError.innerHTML = `
-                <i class="fas fa-exclamation-triangle"></i>
-                <h3>Compilation Error</h3>
-                <p>${message}</p>
-            `;
-            pdfContainer.appendChild(pdfError);
-        }
-
-        // Open a file in the editor
-        function openFile(fileName) {
-            document.querySelectorAll('.file-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            document.querySelector(`.file-item[data-file="${fileName}"]`).classList.add('active');
-
-            if (!openTabs.includes(fileName)) {
-                openTabs.push(fileName);
-                addTab(fileName);
-            }
-
-            switchToTab(fileName);
-        }
-
-        // Add a new editor tab
-        function addTab(fileName) {
-            const noFileTab = editorTabs.querySelector('.editor-tab:not([data-file])');
-            if (noFileTab) {
-                noFileTab.remove();
-            }
-
-            const tab = document.createElement('div');
-            tab.className = 'editor-tab';
-            tab.setAttribute('data-file', fileName);
-
-            const icon = getFileIcon(fileName);
-            const name = fileName.split('/').pop();
-
-            tab.innerHTML = `
-                ${icon} ${name}
-                <span class="editor-tab-close"><i class="fas fa-times"></i></span>
-            `;
-
-            editorTabs.appendChild(tab);
-        }
-
-        // Switch to a specific tab
-        function switchToTab(fileName) {
-            document.querySelectorAll('.editor-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            const activeTab = document.querySelector(`.editor-tab[data-file="${fileName}"]`);
-            if (activeTab) {
-                activeTab.classList.add('active');
-            }
-
-            currentFile = fileName;
-            currentFileElement.textContent = fileName;
-
-            if (fileContents[fileName]) {
-                editor.setValue(fileContents[fileName]);
-                editor.setOption('readOnly', false);
-            } else {
-                fetchFileContent(currentBranch, fileName);
-            }
-
-            updateSaveStatus(true);
-            updateUndoRedoButtons();
-        }
-
-        // Close a tab
-        function closeTab(fileName) {
-            if (openTabs.length <= 1) {
-                openTabs = [];
-                editorTabs.innerHTML = '<div class="editor-tab"><i class="fas fa-file"></i> No file open</div>';
-                currentFile = null;
-                currentFileElement.textContent = 'Select a file to edit';
-                editor.setValue('');
-                editor.setOption('readOnly', true);
-                updateUndoRedoButtons();
-                return;
-            }
-
-            const tabIndex = openTabs.indexOf(fileName);
-            openTabs.splice(tabIndex, 1);
-
-            const tabElement = document.querySelector(`.editor-tab[data-file="${fileName}"]`);
-            tabElement.remove();
-
-            if (currentFile === fileName) {
-                const newActiveTab = openTabs[Math.max(0, tabIndex - 1)];
-                switchToTab(newActiveTab);
-            }
-        }
-
-        // Get appropriate file icon based on extension
+        // Other functions
         function getFileIcon(fileName) {
             const ext = fileName.split('.').pop().toLowerCase();
             switch (ext) {
@@ -1349,50 +1559,25 @@ This is a test to ensure scrolling works.
             }
         }
 
-        // Compile the LaTeX project
-        function compileProject() {
-            if (isCompiling) return;
-
-            isCompiling = true;
-            compileBtn.classList.add('compiling');
-            statusMessage.textContent = 'Compiling...';
-            addToLog('Starting compilation...', 'info');
-
-            setTimeout(() => {
-                const source = editor.getValue();
-                renderLatexToPreview(source);
-                isCompiling = false;
-                compileBtn.classList.remove('compiling');
-            }, 100);
-        }
-
-        // Save the current file
-        function saveFile() {
-            if (!currentFile) {
-                statusMessage.textContent = 'Saved locally (browser memory only)';
-                updateSaveStatus(true);
-                return;
+        function reloadPDF() {
+            if (fileContents[currentFile]) {
+                compileProject();
             }
-
-            statusMessage.textContent = `Saving ${currentFile}...`;
-
-            setTimeout(() => {
-                statusMessage.textContent = `Saved: ${currentFile}`;
-                updateSaveStatus(true);
-                addToLog(`Saved ${currentFile}`, 'info');
-            }, 500);
         }
 
-        function downloadSource() {
-            const text = editor.getValue();
-            const blob = new Blob([text], { type: 'text/plain' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = currentFile || 'document.tex';
-            a.click();
+        function saveFile() {
+            if (!currentFile) return;
+
+            showNotification(`Saved: ${currentFile}`, 'success');
+            updateSaveStatus(true);
+            addToLog(`Saved ${currentFile}`, 'info');
         }
 
-        // Undo last edit
+        function downloadPDF() {
+            showNotification('PDF download simulated', 'info');
+            // In a real implementation, this would generate and download a PDF
+        }
+
         function undoEdit() {
             if (!currentFile || editHistoryIndex[currentFile] <= 0) return;
 
@@ -1401,10 +1586,9 @@ This is a test to ensure scrolling works.
             editor.setValue(content);
             fileContents[currentFile] = content;
             updateUndoRedoButtons();
-            statusMessage.textContent = 'Undo';
+            showNotification('Undo', 'info');
         }
 
-        // Redo last undone edit
         function redoEdit() {
             if (!currentFile || editHistoryIndex[currentFile] >= editHistory[currentFile].length - 1) return;
 
@@ -1413,10 +1597,9 @@ This is a test to ensure scrolling works.
             editor.setValue(content);
             fileContents[currentFile] = content;
             updateUndoRedoButtons();
-            statusMessage.textContent = 'Redo';
+            showNotification('Redo', 'info');
         }
 
-        // Update undo/redo button states
         function updateUndoRedoButtons() {
             if (!currentFile) {
                 undoBtn.disabled = true;
@@ -1428,43 +1611,58 @@ This is a test to ensure scrolling works.
             redoBtn.disabled = editHistoryIndex[currentFile] >= editHistory[currentFile].length - 1;
         }
 
-        // Show word count
         function showWordCount() {
             const content = editor.getValue();
             const words = content.split(/\s+/).filter(word => word.length > 0).length;
             const characters = content.length;
-            statusMessage.textContent = `Words: ${words}, Characters: ${characters}`;
+            showNotification(`Words: ${words}, Characters: ${characters}`, 'info');
         }
 
-        // Zoom out PDF
-        function zoomOutPDF() {
-            if (pdfFrame) {
-                currentZoom = Math.max(0.5, currentZoom - 0.1);
-                applyZoom();
-                statusMessage.textContent = `Zoom: ${Math.round(currentZoom * 100)}%`;
-            }
-        }
-
-        // Zoom in PDF
-        function zoomInPDF() {
-            if (pdfFrame) {
-                currentZoom = Math.min(2.0, currentZoom + 0.1);
-                applyZoom();
-                statusMessage.textContent = `Zoom: ${Math.round(currentZoom * 100)}%`;
-            }
-        }
-
-        // Toggle fullscreen mode for PDF preview
         function toggleFullscreen() {
-            if (pdfContainer.requestFullscreen) {
-                pdfContainer.requestFullscreen();
-            } else if (pdfContainer.webkitRequestFullscreen) {
-                pdfContainer.webkitRequestFullscreen();
+            if (!pdfFrame) return;
+
+            if (!document.fullscreenElement) {
+                if (pdfFrame.requestFullscreen) {
+                    pdfFrame.requestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
             }
-            statusMessage.textContent = 'Fullscreen mode';
         }
 
-        // Toggle compilation log visibility
+        function toggleBranchDropdown(e) {
+            e.stopPropagation();
+            branchDropdown.classList.toggle('show');
+        }
+
+        function closeBranchDropdown(e) {
+            if (!branchDropdown.contains(e.target) && e.target !== branchDropdownBtn) {
+                branchDropdown.classList.remove('show');
+            }
+        }
+
+        function switchBranch(branchName) {
+            currentBranch = branchName;
+            currentBranchDisplay.textContent = branchName;
+            branchDropdown.classList.remove('show');
+
+            // Update UI
+            document.querySelectorAll('.branch-item').forEach(item => {
+                item.classList.remove('active');
+                item.querySelector('i.fa-check')?.remove();
+            });
+
+            const activeItem = document.querySelector(`.branch-item[data-branch="${branchName}"]`);
+            if (activeItem) {
+                activeItem.classList.add('active');
+                activeItem.innerHTML += '<i class="fas fa-check"></i>';
+            }
+
+            showNotification(`Switched to branch: ${branchName}`, 'info');
+        }
+
         function toggleCompilationLog() {
             const isVisible = compilationLog.style.display !== 'none';
             compilationLog.style.display = isVisible ? 'none' : 'block';
@@ -1473,7 +1671,6 @@ This is a test to ensure scrolling works.
                 '<i class="fas fa-chevron-up"></i>';
         }
 
-        // Add a message to the compilation log
         function addToLog(message, type = 'info') {
             const timestamp = new Date().toLocaleTimeString();
             const logEntry = document.createElement('div');
@@ -1483,26 +1680,50 @@ This is a test to ensure scrolling works.
             logContent.scrollTop = logContent.scrollHeight;
         }
 
-        // Update the save status indicator
         function updateSaveStatus(saved) {
             if (saved) {
                 saveStatus.className = 'fas fa-check';
                 saveStatus.style.color = 'var(--secondary-color)';
-                document.querySelector('.status-item:nth-child(2) span').textContent = 'All changes saved';
+                saveStatusText.textContent = 'All changes saved';
             } else {
                 saveStatus.className = 'fas fa-circle';
                 saveStatus.style.color = 'var(--warning-color)';
-                document.querySelector('.status-item:nth-child(2) span').textContent = 'Unsaved changes';
+                saveStatusText.textContent = 'Unsaved changes';
             }
         }
 
-        // Update the connection status indicator
         function updateConnectionStatus(connected) {
             if (connected) {
                 connectionStatus.style.color = 'var(--secondary-color)';
             } else {
                 connectionStatus.style.color = 'var(--danger-color)';
             }
+        }
+
+        function showNotification(message, type = 'info') {
+            notification.textContent = message;
+            notification.className = 'notification';
+            notification.classList.add(type);
+            notification.classList.add('show');
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        function showPDFError(message) {
+            pdfContainer.innerHTML = '';
+            const pdfError = document.createElement('div');
+            pdfError.className = 'pdf-error';
+            pdfError.innerHTML = `
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>Compilation Error</h3>
+                <p>${message}</p>
+                <button class="btn btn-secondary" onclick="compileProject()" style="margin-top: 20px;">
+                    <i class="fas fa-redo"></i> Try Again
+                </button>
+            `;
+            pdfContainer.appendChild(pdfError);
         }
     </script>
 </body>
