@@ -497,6 +497,14 @@ body {
     overflow: hidden;
 }
 
+.branch-dropdown-content {
+    display: none;
+}
+
+.branch-dropdown-content.show {
+    display: block;
+}
+
 .branch-item {
     padding: 8px 10px;
     display: flex;
