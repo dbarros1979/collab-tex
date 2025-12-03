@@ -499,6 +499,16 @@ body {
 
 .branch-dropdown-content {
     display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 180px;
+    background: var(--sidebar-bg);
+    border: 1px solid var(--border-color);
+    z-index: 9999;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 .branch-dropdown-content.show {

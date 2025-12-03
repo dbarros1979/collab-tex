@@ -79,6 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupResizablePanels();
     updateLayoutIndicator();
     showNotification('Welcome to Collab-Tex!', 'info');
+    branchDropdown?.classList.remove('show');
 });
 
 function initializeApp() {
@@ -113,6 +114,7 @@ function initializeApp() {
     const initialContent = `\\documentclass{article}
 \\usepackage{graphicx}
 \\usepackage{amsmath}
+\\usepackage{natbib}
 \\title{Welcome to Collab-Tex}
 \\author{Your Name}
 \\date{\\today}
@@ -122,7 +124,13 @@ function initializeApp() {
 
 Hello world.
 
+This is a citation example \\cite{example}.
+
+\\bibliographystyle{plainnat}
+\\bibliography{references}
+
 \\end{document}`;
+
     editor.setValue(initialContent);
     fileContents['main.tex'] = initialContent;
     editHistory['main.tex'] = [initialContent];
@@ -298,6 +306,7 @@ async function tryInitSwiftLaTeX() {
 }
 
 // ---------- CORE: compileProject (ensures fileContents updated + writes bytes properly) ----------
+// CORE: compileProject (ensures fileContents updated + writes bytes properly) ----------
 async function compileProject() {
     if (isCompiling) return;
     isCompiling = true;
@@ -312,12 +321,42 @@ async function compileProject() {
         const currentSource = editor.getValue();
         fileContents[currentFile] = currentSource;
 
-        // Prepare files map for engine and fallback (include references.bib if present)
+        // Prepare files map - include ALL project files for complete compilation
         const files = {};
-        files['main.tex'] = fileContents['main.tex'] || currentSource || '';
-        if (fileContents['references.bib']) files['references.bib'] = fileContents['references.bib'];
 
-        // show placeholder
+        // Gather ALL files from the project tree
+        const allFileElements = document.querySelectorAll('.file-item[data-file]');
+        for (const fileElement of allFileElements) {
+            const fileName = fileElement.getAttribute('data-file');
+            if (fileContents[fileName]) {
+                files[fileName] = fileContents[fileName];
+            } else if (fileName.endsWith('.bib')) {
+                // For .bib files that haven't been opened yet, use default content
+                files[fileName] = `@article{example,
+  title={An example article},
+  author={Author, A. and Writer, W.},
+  journal={Journal of Examples},
+  year={2023}
+}`;
+                fileContents[fileName] = files[fileName];
+                addToLog(`Using default content for ${fileName}`, 'info');
+            } else if (fileName.endsWith('.tex')) {
+                // For other .tex files
+                files[fileName] = `\\documentclass{article}
+\\begin{document}
+Content for ${fileName}
+\\end{document}`;
+                fileContents[fileName] = files[fileName];
+            }
+        }
+
+        // Always include main.tex with current content
+        files['main.tex'] = fileContents['main.tex'] || currentSource || '';
+
+        // Log which files are being compiled
+        addToLog(`Files to compile: ${Object.keys(files).join(', ')}`, 'info');
+
+        // Show compilation placeholder
         if (!pdfContainer.querySelector('.pdf-frame')) {
             pdfContainer.innerHTML = `
                 <div class="pdf-placeholder">
@@ -325,7 +364,7 @@ async function compileProject() {
                     <p>Compiling LaTeX document...</p>
                 </div>`;
         } else {
-            // overlay
+            // Overlay for existing PDF
             const overlay = document.createElement('div');
             overlay.className = 'pdf-placeholder';
             overlay.style.position = 'absolute';
@@ -341,11 +380,15 @@ async function compileProject() {
 
         // Lazy load engine if needed
         if (!swiftScriptLoaded) {
-            try { await lazyLoadSwiftScript(); await tryInitSwiftLaTeX(); }
-            catch (e) { addToLog('SwiftLaTeX not available; will use latex.js fallback.', 'warning'); }
+            try {
+                await lazyLoadSwiftScript();
+                await tryInitSwiftLaTeX();
+            } catch (e) {
+                addToLog('SwiftLaTeX not available; will use latex.js fallback.', 'warning');
+            }
         }
 
-        // If engine available try real PDF build
+        // If engine available try real PDF build with multiple passes for citations
         if (latexEngineLoaded && latexEngine) {
             try {
                 await compileWithSwiftLaTeXFiles(files);
@@ -408,10 +451,8 @@ async function compileWithSwiftLaTeXFiles(filesMap) {
             // emscripten style: FS.writeFile('/name', data, { encoding: 'binary' })
             if (latexEngine.FS && typeof latexEngine.FS.writeFile === 'function') {
                 try {
-                    // Some FS implementations accept Uint8Array directly
                     latexEngine.FS.writeFile('/' + name, dataBytes, { encoding: 'binary' });
                 } catch (e) {
-                    // fallback: try without options
                     latexEngine.FS.writeFile('/' + name, dataBytes);
                 }
                 addToLog(`Wrote ${name} via FS.writeFile()`, 'info');
@@ -425,41 +466,60 @@ async function compileWithSwiftLaTeXFiles(filesMap) {
                 continue;
             }
 
-            // last resort: if engine exposes MEMFS raw, try to create file via Emscripten
-            throw new Error('No supported write API found on engine');
-
         } catch (werr) {
             addToLog(`Failed to write ${name} to engine FS: ${werr.message || werr}`, 'warning');
-            // continue attempting other files; compilation may still fail and fallback will be used
         }
     }
 
-    // Now invoke compile command; handle multiple possible APIs
+    // For citations, we need to run multiple LaTeX passes and possibly bibtex
     let result = null;
-    if (typeof latexEngine.compile === 'function') {
-        result = await latexEngine.compile('main.tex');
-    } else if (typeof latexEngine.run === 'function') {
-        // some runtimes accept args array
-        result = await latexEngine.run(['pdflatex', 'main.tex']);
-    } else if (typeof latexEngine.exec === 'function') {
-        result = await latexEngine.exec('pdflatex main.tex');
-    } else if (typeof latexEngine.build === 'function') {
-        result = await latexEngine.build();
-    } else {
-        throw new Error('No supported compile API on SwiftLaTeX engine');
-    }
-
-    // try to locate PDF bytes
     let pdfBytes = null;
 
-    // common patterns
+    try {
+        // First pass - generate .aux file
+        addToLog('Running LaTeX first pass...', 'info');
+        if (typeof latexEngine.run === 'function') {
+            await latexEngine.run(['pdflatex', '-interaction=nonstopmode', 'main.tex']);
+        } else if (typeof latexEngine.compile === 'function') {
+            result = await latexEngine.compile('main.tex');
+        }
+
+        // Check if we have a .bib file and try to run bibtex
+        if (filesMap['references.bib'] || Object.keys(filesMap).some(name => name.endsWith('.bib'))) {
+            try {
+                addToLog('Running BibTeX for citations...', 'info');
+                if (typeof latexEngine.run === 'function') {
+                    await latexEngine.run(['bibtex', 'main']);
+                }
+            } catch (bibtexErr) {
+                addToLog(`BibTeX warning: ${bibtexErr.message || bibtexErr}`, 'warning');
+            }
+        }
+
+        // Second pass - resolve citations
+        addToLog('Running LaTeX second pass...', 'info');
+        if (typeof latexEngine.run === 'function') {
+            await latexEngine.run(['pdflatex', '-interaction=nonstopmode', 'main.tex']);
+        }
+
+        // Third pass - finalize
+        addToLog('Running LaTeX third pass...', 'info');
+        if (typeof latexEngine.run === 'function') {
+            await latexEngine.run(['pdflatex', '-interaction=nonstopmode', 'main.tex']);
+        }
+
+    } catch (compileErr) {
+        addToLog(`Compilation pass error: ${compileErr.message || compileErr}`, 'warning');
+    }
+
+    // Try to locate PDF bytes
     if (result) {
         if (result.pdf) pdfBytes = result.pdf;
         else if (result.files && result.files['main.pdf']) pdfBytes = result.files['main.pdf'];
         else if (result instanceof Uint8Array || result instanceof ArrayBuffer) pdfBytes = result;
     }
 
-    // fallback: try FS.readFile
+    // Fallback: try FS.readFile for main.pdf
     if (!pdfBytes && latexEngine.FS && typeof latexEngine.FS.readFile === 'function') {
         try {
             const data = latexEngine.FS.readFile('/main.pdf');
@@ -470,18 +530,27 @@ async function compileWithSwiftLaTeXFiles(filesMap) {
     }
 
     if (!pdfBytes) {
-        // helpful error: try to capture stdout or log files if available
-        let stdout = null;
-        try { if (result && result.stdout) stdout = result.stdout; } catch (e) { }
-        throw new Error('Compilation finished but no PDF found. Engine stdout: ' + (stdout || 'none'));
+        // Try texput.pdf (default LaTeX output name)
+        try {
+            if (latexEngine.FS && typeof latexEngine.FS.readFile === 'function') {
+                const data = latexEngine.FS.readFile('/texput.pdf');
+                pdfBytes = data.buffer ? data.buffer : data;
+            }
+        } catch (e) {
+            addToLog('Also tried texput.pdf, not found.', 'warning');
+        }
+    }
+
+    if (!pdfBytes) {
+        throw new Error('Compilation finished but no PDF found. Check LaTeX compilation log.');
     }
 
     if (pdfBytes instanceof ArrayBuffer) pdfBytes = new Uint8Array(pdfBytes);
     if (!(pdfBytes instanceof Uint8Array)) {
-        try { pdfBytes = new Uint8Array(pdfBytes); } catch (e) { /* not convertible */ }
+        try { pdfBytes = new Uint8Array(pdfBytes); } catch (e) { }
     }
 
-    // create blob and show
+    // Create blob and show
     const blob = new Blob([pdfBytes], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
 
